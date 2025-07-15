@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Betcity Stats Calc",
   "version": "1.0",
-  "description": "Расчёт силы игроков на странице Betcity (Последние игры)",
+  "description": "Расчёт силы игроков на странице Betcity",
   "permissions": [
     "activeTab",
     "scripting"

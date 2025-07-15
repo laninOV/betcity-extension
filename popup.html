@@ -2,17 +2,31 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Расчёты Betcity</title>
+  <title>Betcity Stats</title>
   <style>
-    body {font:14px Arial; margin:0; padding:10px; width:320px; background:#f9f9f9;}
-    h3 {margin:10px 0; color:#333;}
-    ul {padding-left:20px;}
-    li {margin-bottom:4px;}
-    p {margin:8px 0; font-weight:bold;}
+    body { font:14px Arial; margin:0; padding:10px; width:340px; background:#f4f4f4; }
+    h3 { margin:8px 0; color:#222; }
+    ul { padding-left:20px; }
+    li { margin-bottom:4px; font-size:13px; }
+    p { margin:8px 0; font-weight:bold; }
   </style>
 </head>
 <body>
   <div id="results"><p>Загрузка...</p></div>
-  <script src="popup.js"></script>
+  <script>
+    console.log('POPUP LOADED');
+    const out = document.getElementById('results');
+    chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
+      chrome.tabs.sendMessage(tab.id, { action: 'getResults' }, response => {
+        if (chrome.runtime.lastError) {
+          out.innerHTML = `<p>Ошибка: ${chrome.runtime.lastError.message}</p>`;
+        } else if (response && response.data) {
+          out.innerHTML = response.data;
+        } else {
+          out.innerHTML = '<p>Данные не получены. Обновите страницу и попробуйте снова.</p>';
+        }
+      });
+    });
+  </script>
 </body>
 </html>
