@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Betcity Stats Calc",
+  "name": "Betcity Strength Calculator",
   "version": "1.0",
-  "description": "Расчёт силы игроков на странице Betcity",
+  "description": "Мгновенный расчёт силы игроков по последним играм",
   "permissions": [
     "activeTab",
     "scripting"
@@ -14,7 +14,6 @@
     "service_worker": "background.js"
   },
   "action": {
-    "default_title": "Рассчитать силу",
-    "default_popup": "popup.html"
+    "default_title": "Рассчитать силу"
   }
 }

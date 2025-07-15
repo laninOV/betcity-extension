@@ -1,13 +1,20 @@
 // popup.js
-const out=document.getElementById('results');
-chrome.tabs.query({active:true,currentWindow:true},([tab])=>{
-  chrome.tabs.sendMessage(tab.id,{action:'getResults'},response=>{
-    if(chrome.runtime.lastError) {
-      out.innerHTML=`<p>Ошибка: ${chrome.runtime.lastError.message}</p>`;
-    } else if(response && response.data) {
-      out.innerHTML=response.data;
+chrome.runtime.onMessage.addListener((req) => {
+  if (req.action === "showResults") {
+    document.getElementById("results").innerHTML = req.data;
+  }
+});
+
+chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
+  chrome.tabs.sendMessage(tab.id, { action: "getResults" }, (response) => {
+    if (chrome.runtime.lastError) {
+      document.getElementById("results").innerHTML =
+        `<p>Ошибка: ${chrome.runtime.lastError.message}</p>`;
+    } else if (response && response.data) {
+      document.getElementById("results").innerHTML = response.data;
     } else {
-      out.innerHTML='<p>Данные не получены</p>';
+      document.getElementById("results").innerHTML =
+        "<p>Данные не получены. Обновите страницу и попробуйте снова.</p>";
     }
   });
 });

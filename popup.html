@@ -3,30 +3,18 @@
 <head>
   <meta charset="utf-8">
   <title>Betcity Stats</title>
+  <!-- Исправлен meta viewport -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { font:14px Arial; margin:0; padding:10px; width:340px; background:#f4f4f4; }
-    h3 { margin:8px 0; color:#222; }
-    ul { padding-left:20px; }
-    li { margin-bottom:4px; font-size:13px; }
-    p { margin:8px 0; font-weight:bold; }
+    body { font-family: Arial, sans-serif; padding: 10px; width: 320px; background: #f4f4f4; }
+    h3 { margin: 10px 0; color: #222; }
+    ul { padding-left: 20px; }
+    li { margin-bottom: 4px; }
+    p { margin: 8px 0; font-weight: bold; }
   </style>
 </head>
 <body>
   <div id="results"><p>Загрузка...</p></div>
-  <script>
-    console.log('POPUP LOADED');
-    const out = document.getElementById('results');
-    chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
-      chrome.tabs.sendMessage(tab.id, { action: 'getResults' }, response => {
-        if (chrome.runtime.lastError) {
-          out.innerHTML = `<p>Ошибка: ${chrome.runtime.lastError.message}</p>`;
-        } else if (response && response.data) {
-          out.innerHTML = response.data;
-        } else {
-          out.innerHTML = '<p>Данные не получены. Обновите страницу и попробуйте снова.</p>';
-        }
-      });
-    });
-  </script>
+  <script src="popup.js"></script>
 </body>
 </html>
