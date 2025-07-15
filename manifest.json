@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Betcity Stats Calc",
+  "version": "1.0",
+  "description": "Считает силу двух игроков по блоку «Последние игры»",
+  "permissions": ["activeTab", "scripting"],
+  "host_permissions": ["https://betcity.ru/ru/mstat/*"],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_popup": "popup.html", "default_title": "Статы Betcity" }
+}

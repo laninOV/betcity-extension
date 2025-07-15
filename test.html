@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Test Page for Tennis Stats Calculator</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        .test-table { width: 100%; border-collapse: collapse; }
+        .test-table th, .test-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        .test-table th { background-color: #f2f2f2; }
+        .button { background: #007bff; color: white; padding: 10px 15px; border: none; cursor: pointer; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Test Page for Tennis Stats Calculator Extension</h1>
+
+    <div class="test-section">
+        <h2>Тестирование формулы</h2>
+        <button class="button" onclick="testFormula()">Проверить формулу</button>
+        <div id="formula-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Тестирование парсинга матчей</h2>
+        <button class="button" onclick="testMatches()">Проверить парсинг</button>
+        <div id="match-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Тестирование дат</h2>
+        <button class="button" onclick="testDates()">Проверить даты</button>
+        <div id="date-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Симуляция таблицы матчей</h2>
+        <table class="test-table">
+            <thead>
+                <tr>
+                    <th>Время</th>
+                    <th>Матч</th>
+                    <th>Коэффициенты</th>
+                    <th>Статистика</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="event">
+                    <td>15:30</td>
+                    <td>Иванов А. - Петров Б.</td>
+                    <td>1.85 / 1.95</td>
+                    <td><a href="/mstat/143226:542401:325926:19765260">Статистика</a></td>
+                </tr>
+                <tr class="event">
+                    <td>15:45</td>
+                    <td>Сидоров В. - Козлов Г.</td>
+                    <td>2.10 / 1.70</td>
+                    <td><a href="/mstat/143226:542401:325926:19765261">Статистика</a></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        // Test functions for development
+        function testFormula() {
+            const testMatch = {
+                win: 1,
+                setsWon: 3,
+                setsLost: 2,
+                pointsWon: 57,
+                pointsLost: 46,
+                handicap: 2.2,
+                daysAgo: 5
+            };
+
+            const settings = {
+                tau: 0.05,
+                fMax: 5,
+                a1: 1.0,
+                a2: 0.5,
+                a3: 0.3,
+                a4: 0.2
+            };
+
+            // Mock calculation
+            const setsRatio = (testMatch.setsWon - testMatch.setsLost) / (testMatch.setsWon + testMatch.setsLost);
+            const pointsRatio = Math.tanh((testMatch.pointsWon - testMatch.pointsLost) / (testMatch.pointsWon + testMatch.pointsLost));
+            const normalizedHandicap = testMatch.handicap / settings.fMax;
+            const weight = Math.exp(-settings.tau * testMatch.daysAgo);
+
+            const Mi = settings.a1 * testMatch.win + 
+                      settings.a2 * setsRatio + 
+                      settings.a3 * pointsRatio + 
+                      settings.a4 * normalizedHandicap;
+
+            document.getElementById('formula-result').innerHTML = `
+                <p><strong>Тестовый матч:</strong></p>
+                <p>Победа: ${testMatch.win}</p>
+                <p>Соотношение сетов: ${setsRatio.toFixed(3)}</p>
+                <p>Соотношение очков: ${pointsRatio.toFixed(3)}</p>
+                <p>Нормализованная фора: ${normalizedHandicap.toFixed(3)}</p>
+                <p>Вес по времени: ${weight.toFixed(3)}</p>
+                <p><strong>Вклад матча Mi: ${Mi.toFixed(3)}</strong></p>
+            `;
+        }
+
+        function testMatches() {
+            const testScores = [
+                "3:2 (11:7, 8:11, 11:9, 9:11, 11:9)",
+                "3:0 (11:5, 11:8, 11:6)",
+                "2:3 (11:9, 9:11, 11:7, 8:11, 7:11)"
+            ];
+
+            let html = '<p><strong>Тестирование парсинга счета:</strong></p>';
+
+            testScores.forEach(score => {
+                const mainScore = score.match(/(\d+):(\d+)/);
+                const setScores = score.match(/\((.*?)\)/);
+
+                if (mainScore && setScores) {
+                    const sets = setScores[1].split(',').map(s => s.trim());
+                    let pointsWon = 0, pointsLost = 0;
+
+                    sets.forEach(set => {
+                        const setMatch = set.match(/(\d+):(\d+)/);
+                        if (setMatch) {
+                            pointsWon += parseInt(setMatch[1]);
+                            pointsLost += parseInt(setMatch[2]);
+                        }
+                    });
+
+                    html += `<p>${score} → Сеты: ${mainScore[1]}:${mainScore[2]}, Очки: ${pointsWon}:${pointsLost}</p>`;
+                }
+            });
+
+            document.getElementById('match-result').innerHTML = html;
+        }
+
+        function testDates() {
+            const testDates = [
+                "15.07.25",
+                "01.06.2025",
+                "2025-07-10"
+            ];
+
+            let html = '<p><strong>Тестирование парсинга дат:</strong></p>';
+            const currentDate = new Date();
+
+            testDates.forEach(dateStr => {
+                let date;
+                if (dateStr.includes('.')) {
+                    const parts = dateStr.split('.');
+                    let year = parseInt(parts[2]);
+                    if (year < 100) year += 2000;
+                    date = new Date(year, parseInt(parts[1]) - 1, parseInt(parts[0]));
+                } else {
+                    date = new Date(dateStr);
+                }
+
+                const diffTime = currentDate.getTime() - date.getTime();
+                const daysAgo = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+                html += `<p>${dateStr} → ${daysAgo} дней назад</p>`;
+            });
+
+            document.getElementById('date-result').innerHTML = html;
+        }
+
+        // Load notification
+        window.addEventListener('load', function() {
+            console.log('Test page loaded. Extension can be tested here.');
+        });
+    </script>
+</body>
+</html>
