@@ -1,6 +1,7 @@
-chrome.action.onClicked.addListener(async (tab) => {
+// background.js
+chrome.action.onClicked.addListener(tab => {
   if (!tab.id || !tab.url.includes('/ru/mstat/')) return;
-  await chrome.scripting.executeScript({
+  chrome.scripting.executeScript({
     target: { tabId: tab.id },
     files: ["content.js"]
   });
