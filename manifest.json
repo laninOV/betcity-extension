@@ -1,19 +1,16 @@
 {
   "manifest_version": 3,
-  "name": "Betcity Strength Calculator",
+  "name": "Tennis Analysis Extension",
   "version": "1.0",
-  "description": "Мгновенный расчёт силы игроков по последним играм",
-  "permissions": [
-    "activeTab",
-    "scripting"
-  ],
-  "host_permissions": [
-    "https://betcity.ru/ru/mstat/*"
-  ],
-  "background": {
-    "service_worker": "background.js"
-  },
+  "description": "Анализ теннисных матчей",
   "action": {
-    "default_title": "Рассчитать силу"
-  }
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "permissions": ["activeTab"]
 }

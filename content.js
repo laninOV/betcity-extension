@@ -1,74 +1,89 @@
-// content.js — улучшенная версия с детализацией силы и умными советами
-
+// content.js — обновленная версия с выводом и в консоль, и в popup
 (() => {
-  console.log("content.js запущен");
+  console.log("🎾 Tennis Analysis content.js загружен");
 
+  /* ----------------------- КОНФИГУРАЦИЯ ----------------------- */
   const cfg = {
-    a1: 1,
-    a2: 0.5,
-    a3: 0.3,
-    a4: 0.2,
-    tau: 0.03,
-    fMax: 5,
-    k: 5,
-    h2hK: 0.15
+    a1: 1,          // вес победы
+    a2: 0.5,        // вес разницы сетов
+    a3: 0.3,        // вес разницы очков
+    a4: 0.2,        // вес средней форы
+    tau: 0.03,      // коэффициент экспоненциального затухания по давности матча
+    fMax: 5,        // максимальная абсолютная фора, используемая для нормализации
+    k: 5,           // коэффициент логистической функции для вероятности
+    h2hK: 0.15      // вес личных встреч
   };
   const now = new Date();
 
+  /* ----------------------- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ----------------------- */
+
+  // Парсинг одной игры из строки таблицы «Последние игры»
   function parseGame(row, header) {
     const dateCell = row.querySelector("td.date");
     const dateText = dateCell?.textContent.trim();
     if (!dateText) return null;
+
     const [d, m, y] = dateText.split(".").map(Number);
     const dt = new Date(2000 + y, m - 1, d);
-    const diffDays = Math.floor((now - dt) / (1000 * 60 * 60 * 24));
+    const diffDays = Math.floor((now - dt) / (24 * 3600 * 1000));
 
     const info = row.nextElementSibling;
     const playersText = info.querySelector("td.ev-mstat-ev")?.textContent.trim();
-    const scoreText = info.querySelector("td.score")?.textContent.trim();
+    const scoreText   = info.querySelector("td.score")?.textContent.trim();
     if (!playersText || !scoreText) return null;
 
     const match = scoreText.match(/^(\d+):(\d+)\s*\(([^)]+)\)/);
     if (!match) return null;
+
     const [, s1, s2, pts] = match;
     const sets1 = +s1, sets2 = +s2;
-    const pairs = pts.split(",").map(p => p.trim().split(":").map(Number));
+    const pairs  = pts.split(",").map(p => p.trim().split(":").map(Number));
 
     const isHome = playersText.indexOf(header) < playersText.indexOf(" - ");
     const playerSets = isHome ? sets1 : sets2;
-    const oppSets = isHome ? sets2 : sets1;
+    const oppSets    = isHome ? sets2 : sets1;
 
-    const total1 = pairs.reduce((sum, [a]) => sum + a, 0);
-    const total2 = pairs.reduce((sum, [, b]) => sum + b, 0);
+    const total1 = pairs.reduce((acc, [a]) => acc + a, 0);
+    const total2 = pairs.reduce((acc, [, b]) => acc + b, 0);
 
     const playerPoints = isHome ? total1 : total2;
-    const oppPoints = isHome ? total2 : total1;
-    const handicap = playerPoints - oppPoints;
-    const win = playerSets > oppSets ? 1 : 0;
+    const oppPoints    = isHome ? total2 : total1;
+    const handicap     = playerPoints - oppPoints;
+    const win          = playerSets > oppSets ? 1 : 0;
 
-    const w = Math.exp(-cfg.tau * diffDays);
+    const w = Math.exp(-cfg.tau * diffDays);                     // вес давности
+    const sr = (playerSets + oppSets) ? (playerSets - oppSets) / (playerSets + oppSets) : 0;    // разница сетов
+    const pr = (playerPoints + oppPoints) 
+                 ? Math.tanh((playerPoints - oppPoints) / (playerPoints + oppPoints)) : 0;       // норм. разница очков
+    const avgH = (playerSets + oppSets) ? handicap / (playerSets + oppSets) : 0;                // средняя фора на сет
+    const hn = Math.max(-1, Math.min(1, avgH / cfg.fMax));                                      // норм. фора
 
-    // Улучшенная формула силы с учётом качества победы
-    const sr = (playerSets + oppSets) ? (playerSets - oppSets) / (playerSets + oppSets) : 0;
-    const pr = (playerPoints + oppPoints)
-      ? Math.tanh((playerPoints - oppPoints) / (playerPoints + oppPoints))
+    const qualityBonus = win
+      ? (playerSets === 3 && oppSets === 0 ? 0.2
+        : playerSets === 3 && oppSets === 1 ? 0.1
+        : 0)
       : 0;
-    const avgH = (playerSets + oppSets) ? handicap / (playerSets + oppSets) : 0;
-    const hn = Math.max(-1, Math.min(1, avgH / cfg.fMax));
-    
-    // Бонус за качество победы (3:0, 3:1 лучше чем 3:2)
-    const qualityBonus = win ? (playerSets === 3 && oppSets === 0 ? 0.2 : 
-                               playerSets === 3 && oppSets === 1 ? 0.1 : 0) : 0;
-    
+
     const Mi = cfg.a1 * win + cfg.a2 * sr + cfg.a3 * pr + cfg.a4 * hn + qualityBonus;
 
-    return { win, playerSets, oppSets, playerPoints, oppPoints, handicap, w, Mi, diffDays, dt };
+    return {
+      win,
+      playerSets, oppSets,
+      playerPoints, oppPoints,
+      handicap,
+      w, Mi,
+      diffDays,
+      dt
+    };
   }
 
+  // Парсинг секции «Последние игры» одной из сторон
   function parseSection(table) {
     const titleCell = table.querySelector("tr:first-child td.title, tr:first-child td");
-    const titleText = titleCell?.textContent.trim() || "";
-    const header = titleText.replace(/^Последние игры\s+/, "").replace(/:$/, "").trim();
+    const header    = (titleCell?.textContent.trim() || "")
+                        .replace(/^Последние игры\s+/i, "")
+                        .replace(/:$/, "")
+                        .trim();
 
     const rows = Array.from(table.querySelectorAll("tr")).slice(2);
     const games = [];
@@ -79,42 +94,48 @@
     return { player: header, games };
   }
 
+  // Базовая сила (взвешенное среднее Mi) — все игры или первые limit
   function calcBaseS(games, limit = null) {
-    const gamesSubset = limit ? games.slice(0, limit) : games;
+    const arr = limit ? games.slice(0, limit) : games;
     let num = 0, den = 0;
-    gamesSubset.forEach(g => { num += g.w * g.Mi; den += g.w; });
+    arr.forEach(g => { num += g.w * g.Mi; den += g.w; });
     return den ? num / den : 0;
   }
 
+  // Баланс фор (средняя положительная фора побед – средняя отрицательная фора поражений)
   function calcForaBalance(games) {
-    const wins = games.filter(g => g.win);
+    const wins   = games.filter(g => g.win);
     const losses = games.filter(g => !g.win);
-    const fW = wins.length ? wins.reduce((s, g) => s + g.handicap, 0) / wins.length : 0;
+    const fW = wins.length   ? wins.reduce((s, g) => s +  g.handicap          , 0) / wins.length   : 0;
     const fL = losses.length ? losses.reduce((s, g) => s + Math.abs(g.handicap), 0) / losses.length : 0;
     return Math.tanh((fW - fL) / cfg.fMax);
   }
 
+  // Дисперсия фор (для оценки волатильности)
   function calcForaVariance(games) {
-    if (games.length === 0) return 0;
+    if (!games.length) return 0;
     const mean = games.reduce((s, g) => s + g.handicap, 0) / games.length;
-    const variance = games.reduce((s, g) => s + (g.handicap - mean) ** 2, 0) / games.length;
-    return Math.sqrt(variance);
+    const var_ = games.reduce((s, g) => s + (g.handicap - mean) ** 2, 0) / games.length;
+    return Math.sqrt(var_);
   }
 
+  // Итоговая сила игрока с учётом фор
   function strengthAdj(games) {
     const S = calcBaseS(games);
     const F = calcForaBalance(games);
     return S + 0.25 * F;
   }
 
-  function getStrengthLabel(s) {
-    if (s >= 1.5) return "отличная";
-    if (s >= 1.0) return "хорошая";
-    if (s >= 0.5) return "средняя";
-    if (s >= 0.0) return "слабая";
+  // Чисто визуальная метка уровня силы
+  function getStrengthLabel(x) {
+    if (x >=  1.5) return "отличная";
+    if (x >=  1.0) return "хорошая";
+    if (x >=  0.5) return "средняя";
+    if (x >=  0.0) return "слабая";
     return "очень слабая";
   }
 
+  // Парсинг таблицы «Очные встречи»
   function parseH2H(playerA, playerB) {
     const h2hTable = [...document.querySelectorAll("table")]
       .find(t => t.querySelector("tr:first-child td.title")?.textContent.includes("Очные встречи"));
@@ -122,144 +143,235 @@
 
     const rows = [...h2hTable.querySelectorAll("tr")].slice(2);
     let wAweighted = 0, wBweighted = 0, sumW = 0, wA = 0, wB = 0;
+
     rows.forEach(row => {
-      const score = row.querySelector("td.score")?.textContent.trim();
-      const playersText = row.querySelector("td.descr")?.textContent.trim();
-      const dateText = row.querySelector("td.date")?.textContent.trim();
-      if (!score || !playersText || !dateText) return;
-      const [s1, s2] = score.match(/^(\d+):(\d+)/).slice(1, 3).map(Number);
-      const [d, m, y] = dateText.split(".").map(Number);
+      const score      = row.querySelector("td.score")?.textContent.trim();
+      const playersTxt = row.querySelector("td.descr")?.textContent.trim();
+      const dateTxt    = row.querySelector("td.date")?.textContent.trim();
+      if (!score || !playersTxt || !dateTxt) return;
+
+      const match = score.match(/^(\d+):(\d+)/);
+      if (!match) return;
+      const [s1, s2] = match.slice(1, 3).map(Number);
+      const [d, m, y] = dateTxt.split(".").map(Number);
       const dt = new Date(2000 + y, m - 1, d);
-      const diffDays = Math.floor((now - dt) / (1000 * 60 * 60 * 24));
-      const weight = Math.exp(-cfg.tau * diffDays);
-      const isAhome = playersText.indexOf(playerA) < playersText.indexOf(" - ");
+      const diffDays = Math.floor((now - dt) / (24 * 3600 * 1000));
+      const w = Math.exp(-cfg.tau * diffDays);
+
+      const isAhome = playersTxt.indexOf(playerA) < playersTxt.indexOf(" - ");
 
       if ((isAhome && s1 > s2) || (!isAhome && s2 > s1)) {
-        wAweighted += weight;
-        wA++;
+        wAweighted += w; wA++;
+      } else {
+        wBweighted += w; wB++;
       }
-      else {
-        wBweighted += weight;
-        wB++;
-      }
-      sumW += weight;
+      sumW += w;
     });
     return { wA, wB, total: wA + wB, wAweighted, wBweighted, sumW };
   }
 
-  function report(section) {
-    const Sraw = calcBaseS(section.games);
-    const S2games = calcBaseS(section.games, 2);
-    const Sadj = strengthAdj(section.games);
-    const varF = calcForaVariance(section.games);
-    const foraBalance = calcForaBalance(section.games);
-    
-    console.group(`${section.player}:`);
-    console.log(`S за 2 игры: ${S2games.toFixed(3)} (${getStrengthLabel(S2games)})`);
-    console.log(`S за 5 игр: ${Sraw.toFixed(3)} (${getStrengthLabel(Sraw)})`);
-    console.log(`Баланс фор: ${foraBalance.toFixed(3)} (${getStrengthLabel(foraBalance)})`);
-    console.log(`S итоговая: ${Sadj.toFixed(3)} (${getStrengthLabel(Sadj)})`);
-    console.log(`Дисперсия форы: ${varF.toFixed(2)}`);
-    
-    section.games.forEach((g, i) => {
-      const res = g.win ? "Выиграл" : "Проиграл";
-      const sign = g.handicap >= 0 ? "+" : "";
-      console.log(
-        `Игра ${i + 1}: ${res} ${g.playerSets}-${g.oppSets}, очки ${g.playerPoints}-${g.oppPoints}, ${res.toLowerCase()} с форой ${sign}${g.handicap}`
-      );
-    });
-    console.groupEnd();
-    return Sadj;
-  }
-
+  // Уровень уверенности прогноза (эмодзи)
   function getConfidenceLevel(pA, pB, varA, varB, h2hTotal) {
     const maxProb = Math.max(pA, pB);
-    const minVar = Math.min(varA, varB);
-    
-    // Высокая уверенность: вероятность >75%, низкая дисперсия, достаточно H2H
-    if (maxProb > 0.75 && minVar < 8 && h2hTotal >= 3) return "🟢";
-    // Средняя уверенность: вероятность >65% или хорошие показатели
-    if (maxProb > 0.65 && minVar < 12) return "🟡";
-    // Низкая уверенность: остальные случаи
+    const minVar  = Math.min(varA, varB);
+
+    if (maxProb > 0.75 && minVar < 8  && h2hTotal >= 3) return "🟢";
+    if (maxProb > 0.65 && minVar < 12)                   return "🟡";
     return "🔴";
   }
 
+  // Совет по ставке
   function getAdvice(pA, pB, varA, varB, normA, normB, h2h) {
-    const maxVar = Math.max(varA, varB);
-    const probDiff = Math.abs(pA - pB);
-    const strengthDiff = Math.abs(normA - normB);
+    const maxVar      = Math.max(varA, varB);
+    const probDiff    = Math.abs(pA - pB);
+    const strengthDiff= Math.abs(normA - normB);
+
+    if (maxVar > 15)              return "Высокая волатильность — рассмотреть тоталы или точный счёт.";
+    if (probDiff < 0.15)          return "Примерно равные шансы — лучше играть тотал, а не исход.";
+    if (strengthDiff > 20 && h2h.total >= 5)
+                                 return "Явный фаворит подтверждён H2H — ставка на исход оправдана.";
+    if (h2h.total < 3)            return "Мало личных встреч — снизьте размер ставки.";
+    return "Умеренная уверенность — стандартные ставки с осторожностью.";
+  }
+
+  // Логирование в консоль с красивым форматом
+  function logToConsole(sectionA, sectionB, S1, S2, h2h, finalData) {
+    console.group("🎾 ТЕННИСНЫЙ АНАЛИЗ");
     
-    if (maxVar > 15) {
-      return "Высокая волатильность результатов — рассмотрите ставку на тотал или точный счёт вместо исхода";
+    // Логируем каждого игрока
+    [sectionA, sectionB].forEach((section, index) => {
+      const S = index === 0 ? S1 : S2;
+      const Sraw = calcBaseS(section.games);
+      const S2games = calcBaseS(section.games, 2);
+      const varF = calcForaVariance(section.games);
+      const foraBalance = calcForaBalance(section.games);
+      
+      console.group(`${section.player}:`);
+      console.log(`S за 2 игры: ${S2games.toFixed(3)} (${getStrengthLabel(S2games)})`);
+      console.log(`S за 5 игр: ${Sraw.toFixed(3)} (${getStrengthLabel(Sraw)})`);
+      console.log(`Баланс фор: ${foraBalance.toFixed(3)} (${getStrengthLabel(foraBalance)})`);
+      console.log(`S итоговая: ${S.toFixed(3)} (${getStrengthLabel(S)})`);
+      console.log(`Дисперсия форы: ${varF.toFixed(2)}`);
+      
+      section.games.forEach((g, i) => {
+        const res = g.win ? "Выиграл" : "Проиграл";
+        const sign = g.handicap >= 0 ? "+" : "";
+        console.log(
+          `Игра ${i + 1}: ${res} ${g.playerSets}-${g.oppSets}, очки ${g.playerPoints}-${g.oppPoints}, фора ${sign}${g.handicap}`
+        );
+      });
+      console.groupEnd();
+    });
+
+    // Итоговый результат
+    console.group("📊 ИТОГОВЫЙ ПРОГНОЗ");
+    console.table(finalData.players.map(p => ({
+      "Игрок": p.name,
+      "S (0-100)": p.strength,
+      "Вероятность (%)": p.probability,
+      "H2H побед": p.h2h,
+      "Дисперсия фор": p.variance
+    })));
+    
+    console.log(`H2H: ${sectionA.player} ${h2h.wA}-${h2h.wB} ${sectionB.player} (из ${h2h.total})`);
+    console.log(`${finalData.confidence} Фаворит: ${finalData.favorite}`);
+    console.log(`💡 Совет: ${finalData.advice}`);
+    
+    if (finalData.additionalInfo) {
+      console.log("📈 Дополнительные показатели:", finalData.additionalInfo);
     }
-    if (probDiff < 0.15) {
-      return "Практически равные шансы — избегайте ставок на фаворита, лучше тотал очков";
-    }
-    if (strengthDiff > 20 && h2h.total >= 5) {
-      return "Явный фаворит подтверждён статистикой — можно рассматривать ставку на исход";
-    }
-    if (h2h.total < 3) {
-      return "Мало личных встреч — прогноз менее надёжен, осторожность при ставках";
-    }
-    return "Умеренная уверенность в прогнозе — стандартные ставки с осторожностью";
+    
+    console.groupEnd();
+    console.groupEnd();
   }
 
-  // --- Основной ---
-  const tables = document.querySelectorAll("table.ev-mstat-tbl");
-  if (tables.length < 2) {
-    console.error("Не найдено две таблицы «Последние игры»");
-    return;
+  /* ----------------------- ОСНОВНАЯ ФУНКЦИЯ АНАЛИЗА ----------------------- */
+
+  function performAnalysis() {
+    console.log("🔍 Начинаем анализ...");
+    
+    // Ищем две таблицы «Последние игры»
+    const tables = document.querySelectorAll("table.ev-mstat-tbl");
+    console.log(`Найдено таблиц: ${tables.length}`);
+    
+    if (tables.length < 2) {
+      throw new Error("Не найдены две таблицы «Последние игры»");
+    }
+
+    const sectionA = parseSection(tables[0]);
+    const sectionB = parseSection(tables[1]);
+    
+    console.log(`Игрок A: ${sectionA.player}, игр: ${sectionA.games.length}`);
+    console.log(`Игрок B: ${sectionB.player}, игр: ${sectionB.games.length}`);
+
+    // Базовые силы
+    const S1raw   = calcBaseS(sectionA.games);
+    const S2raw   = calcBaseS(sectionB.games);
+    const Sadj1   = strengthAdj(sectionA.games);
+    const Sadj2   = strengthAdj(sectionB.games);
+
+    // Личные встречи
+    const h2h = parseH2H(sectionA.player, sectionB.player);
+    const hH  = h2h.sumW > 0 ? cfg.h2hK * (2 * (h2h.wAweighted / h2h.sumW) - 1) : 0;
+
+    // Итоговые силы с учётом H2H (70% собственная форма + 30% H2H-коррекция)
+    const SfA   = 0.7 * Sadj1 + hH;
+    const SfB   = 0.7 * Sadj2 - hH;
+
+    // Нормируем в диапазон 0-100
+    const normA = 50 + 50 * SfA;
+    const normB = 50 + 50 * SfB;
+
+    // Вероятности (логистическая функция)
+    let pA = 1 / (1 + Math.exp(-cfg.k * (SfA - SfB)));
+    let pB = 1 - pA;
+
+    // Коррекция на нестабильность фор
+    const varA = calcForaVariance(sectionA.games);
+    const varB = calcForaVariance(sectionB.games);
+    if (varA > 10 || varB > 10) {
+      pA = 0.35 + 0.3 * (pA - 0.5);
+      pB = 1 - pA;
+    }
+
+    // Уровень уверенности и совет
+    const confidence = getConfidenceLevel(pA, pB, varA, varB, h2h.total);
+    const advice     = getAdvice(pA, pB, varA, varB, normA, normB, h2h);
+
+    // Подробная статистика по матчам — строки для popup
+    function gameStr(g, idx) {
+      const res  = g.win ? "W" : "L";
+      const sign = g.handicap >= 0 ? "+" : "";
+      return `#${idx + 1}: ${res} ${g.playerSets}-${g.oppSets}, pts ${g.playerPoints}-${g.oppPoints}, fora ${sign}${g.handicap}`;
+    }
+
+    // Формируем итоговый объект для popup
+    const finalData = {
+      confidence,
+      players: [
+        {
+          name: sectionA.player,
+          strength: normA.toFixed(1),
+          probability: (pA * 100).toFixed(1),
+          h2h: h2h.wA.toString(),
+          variance: varA.toFixed(1)
+        },
+        {
+          name: sectionB.player,
+          strength: normB.toFixed(1),
+          probability: (pB * 100).toFixed(1),
+          h2h: h2h.wB.toString(),
+          variance: varB.toFixed(1)
+        }
+      ],
+      favorite: pA > pB
+        ? `${sectionA.player} [${normA.toFixed(1)}]`
+        : `${sectionB.player} [${normB.toFixed(1)}]`,
+      advice,
+      h2hInfo: `${sectionA.player} ${h2h.wA}-${h2h.wB} ${sectionB.player} (из ${h2h.total} встреч)`,
+      detailedStats: [
+        {
+          player: sectionA.player,
+          games: sectionA.games.map(gameStr)
+        },
+        {
+          player: sectionB.player,
+          games: sectionB.games.map(gameStr)
+        }
+      ],
+      additionalInfo: {
+        "S базовая A": S1raw.toFixed(3),
+        "S базовая B": S2raw.toFixed(3),
+        "H2H коррекция": hH.toFixed(3),
+        "Волатильность A": varA > 10 ? "Высокая" : "Нормальная",
+        "Волатильность B": varB > 10 ? "Высокая" : "Нормальная",
+        "Всего H2H": h2h.total.toString()
+      }
+    };
+
+    // Выводим в консоль для отладки
+    logToConsole(sectionA, sectionB, Sadj1, Sadj2, h2h, finalData);
+
+    return finalData;
   }
 
-  const sectionA = parseSection(tables[0]);
-  const sectionB = parseSection(tables[1]);
-  const S1 = report(sectionA);
-  const S2 = report(sectionB);
+  /* ----------------------- ОБРАБОТЧИК СООБЩЕНИЙ ----------------------- */
 
-  // Парсинг H2H
-  const h2h = parseH2H(sectionA.player, sectionB.player);
-  const hH = h2h.sumW > 0 ? cfg.h2hK * (2 * (h2h.wAweighted / h2h.sumW) - 1) : 0;
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    console.log("📨 Получено сообщение:", request);
+    
+    if (request.action === "analyze") {
+      try {
+        const data = performAnalysis();
+        console.log("✅ Анализ завершен успешно");
+        sendResponse({ success: true, data });
+      } catch (err) {
+        console.error("❌ Ошибка анализа:", err);
+        sendResponse({ success: false, error: err.message });
+      }
+      return true; // Важно для асинхронного ответа
+    }
+  });
 
-  // Итоговая сила
-  const SfinalA = 0.7 * S1 + hH;
-  const SfinalB = 0.7 * S2 - hH;
-
-  // Нормализация
-  const normA = 50 + 50 * SfinalA;
-  const normB = 50 + 50 * SfinalB;
-
-  // Вероятности
-  let pA0 = 1 / (1 + Math.exp(-cfg.k * (SfinalA - SfinalB)));
-  let pB0 = 1 - pA0;
-
-  // Коррекция на нестабильность
-  const varA = calcForaVariance(sectionA.games);
-  const varB = calcForaVariance(sectionB.games);
-  let pA = pA0;
-  let pB = pB0;
-  if (varA > 10 || varB > 10) {
-    pA = 0.35 + 0.3 * (pA0 - 0.5);
-    pB = 1 - pA;
-  }
-
-  // Определение уровня уверенности
-  const confidence = getConfidenceLevel(pA, pB, varA, varB, h2h.total);
-  const advice = getAdvice(pA, pB, varA, varB, normA, normB, h2h);
-
-  // Вывод итога
-  console.group(`\n${confidence} Итоговый прогноз, агрегированный анализ:`);
-  console.table([
-    { "Игрок": sectionA.player, "S (0-100)": normA.toFixed(1), "Вероятность (%)": (pA * 100).toFixed(1), "Базовая S": S1.toFixed(3), "Дисперсия фор": varA.toFixed(2), "H2H": h2h.wA },
-    { "Игрок": sectionB.player, "S (0-100)": normB.toFixed(1), "Вероятность (%)": (pB * 100).toFixed(1), "Базовая S": S2.toFixed(3), "Дисперсия фор": varB.toFixed(2), "H2H": h2h.wB }
-  ]);
-  
-  console.log(`H2H: ${sectionA.player} ${h2h.wA}-${h2h.wB} ${sectionB.player} (из ${h2h.total})`);
-  
-  if (varA > 10 || varB > 10) {
-    console.log("⚠️ Высокая дисперсия фор у одного из игроков");
-  }
-  
-  console.log(`🎯 Фаворит: ${(pA > pB ? sectionA.player : sectionB.player)} [${Math.max(normA, normB).toFixed(1)}]`);
-  console.log(`💡 Совет: ${advice}`);
-  console.groupEnd();
+  console.log("🎾 Tennis Analysis готов к работе!");
 })();

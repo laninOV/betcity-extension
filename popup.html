@@ -1,20 +1,76 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8">
-  <title>Betcity Stats</title>
-  <!-- Исправлен meta viewport -->
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body { font-family: Arial, sans-serif; padding: 10px; width: 320px; background: #f4f4f4; }
-    h3 { margin: 10px 0; color: #222; }
-    ul { padding-left: 20px; }
-    li { margin-bottom: 4px; }
-    p { margin: 8px 0; font-weight: bold; }
-  </style>
+    <meta charset="utf-8">
+    <title>Tennis Analysis</title>
+    <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <div id="results"><p>Загрузка...</p></div>
-  <script src="popup.js"></script>
+    <div class="container">
+        <header>
+            <h1>🎾 Tennis Analysis</h1>
+            <button id="analyzeBtn" class="analyze-btn">Анализировать</button>
+        </header>
+        
+        <div id="loading" class="loading hidden">
+            <div class="spinner"></div>
+            <p>Анализируем...</p>
+        </div>
+        
+        <div id="results" class="results hidden">
+            <div class="confidence-indicator">
+                <span id="confidenceIcon">🟡</span>
+                <span id="confidenceText">Средняя уверенность</span>
+            </div>
+            
+            <div class="players-comparison">
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>Игрок</th>
+                            <th>S (0-100)</th>
+                            <th>Вероятность (%)</th>
+                            <th>H2H</th>
+                            <th>Дисперсия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="playersTableBody">
+                        <!-- Динамически заполняется -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="favorite-section">
+                <h3>🎯 Фаворит</h3>
+                <p id="favoriteInfo"></p>
+            </div>
+            
+            <div class="advice-section">
+                <h3>💡 Рекомендация</h3>
+                <p id="adviceText"></p>
+            </div>
+            
+            <div class="h2h-section">
+                <h3>⚔️ Личные встречи</h3>
+                <p id="h2hInfo"></p>
+            </div>
+            
+            <div class="detailed-stats">
+                <h3>📊 Детальная статистика</h3>
+                <div id="detailedStatsContent"></div>
+            </div>
+            
+            <div class="additional-info">
+                <h3>📈 Дополнительные показатели</h3>
+                <div id="additionalInfoContent"></div>
+            </div>
+        </div>
+        
+        <div id="error" class="error hidden">
+            <p>❌ Ошибка: Не найдены данные для анализа</p>
+        </div>
+    </div>
+    
+    <script src="popup.js"></script>
 </body>
 </html>
