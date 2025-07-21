@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Tennis Analysis Extension",
-  "version": "1.0",
-  "description": "Анализ теннисных матчей",
+  "name": "Tennis Analysis Extension Pro",
+  "version": "2.0",
+  "description": "Продвинутый анализ матчей настольного тенниса",
   "action": {
     "default_popup": "popup.html"
   },

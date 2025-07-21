@@ -2,13 +2,13 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Tennis Analysis</title>
+    <title>Tennis Analysis Pro</title>
     <link rel="stylesheet" href="popup.css">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>🎾 Tennis Analysis</h1>
+            <h1>🎾 Tennis Analysis Pro</h1>
             <button id="analyzeBtn" class="analyze-btn">Анализировать</button>
         </header>
         
@@ -18,11 +18,13 @@
         </div>
         
         <div id="results" class="results hidden">
+            <!-- Уровень уверенности -->
             <div class="confidence-indicator">
                 <span id="confidenceIcon">🟡</span>
                 <span id="confidenceText">Средняя уверенность</span>
             </div>
             
+            <!-- Основная таблица сравнения -->
             <div class="players-comparison">
                 <table class="comparison-table">
                     <thead>
@@ -31,35 +33,114 @@
                             <th>S (0-100)</th>
                             <th>Вероятность (%)</th>
                             <th>H2H</th>
-                            <th>Дисперсия</th>
+                            <th>Стабильность</th>
                         </tr>
                     </thead>
                     <tbody id="playersTableBody">
-                        <!-- Динамически заполняется -->
                     </tbody>
                 </table>
             </div>
+
+            <!-- Показатели силы -->
+            <div class="strength-indicators">
+                <h3>💪 Показатели силы</h3>
+                <div class="strength-grid">
+                    <div class="strength-card">
+                        <div class="strength-title">S за 2 игры</div>
+                        <div class="strength-values">
+                            <div class="player-strength">
+                                <span id="player1Name2">Игрок 1</span>: <span id="s2games1">0.000</span>
+                            </div>
+                            <div class="player-strength">
+                                <span id="player2Name2">Игрок 2</span>: <span id="s2games2">0.000</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="strength-card">
+                        <div class="strength-title">S за 5 игр</div>
+                        <div class="strength-values">
+                            <div class="player-strength">
+                                <span id="player1Name5">Игрок 1</span>: <span id="s5games1">0.000</span>
+                            </div>
+                            <div class="player-strength">
+                                <span id="player2Name5">Игрок 2</span>: <span id="s5games2">0.000</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Вероятности по сетам -->
+            <div class="set-probabilities">
+                <h3>🎯 Вероятности побед в сетах</h3>
+                <div class="sets-grid">
+                    <div class="set-card">
+                        <div class="set-title">1-й сет</div>
+                        <div class="set-prob" id="set1Prob">50% / 50%</div>
+                    </div>
+                    <div class="set-card">
+                        <div class="set-title">2-й сет</div>
+                        <div class="set-prob" id="set2Prob">50% / 50%</div>
+                    </div>
+                    <div class="set-card">
+                        <div class="set-title">3-й сет</div>
+                        <div class="set-prob" id="set3Prob">50% / 50%</div>
+                    </div>
+                    <div class="set-card">
+                        <div class="set-title">4-й сет</div>
+                        <div class="set-prob" id="set4Prob">50% / 50%</div>
+                    </div>
+                </div>
+            </div>
             
+            <!-- Фаворит -->
             <div class="favorite-section">
-                <h3>🎯 Фаворит</h3>
+                <h3>🏆 Фаворит</h3>
                 <p id="favoriteInfo"></p>
             </div>
             
+            <!-- Рекомендация -->
             <div class="advice-section">
                 <h3>💡 Рекомендация</h3>
                 <p id="adviceText"></p>
             </div>
             
+            <!-- Личные встречи -->
             <div class="h2h-section">
                 <h3>⚔️ Личные встречи</h3>
-                <p id="h2hInfo"></p>
+                <div class="h2h-content">
+                    <p id="h2hInfo"></p>
+                    <div class="h2h-stats">
+                        <div class="h2h-stat">
+                            <span class="stat-label">Сухие победы</span>
+                            <span id="h2hDryWins">0 / 0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Статистика сухих партий -->
+            <div class="dry-games-section">
+                <h3>🔥 Сухие партии (последние 5 игр)</h3>
+                <div class="dry-stats-grid">
+                    <div class="dry-stat-card">
+                        <div class="player-name" id="dryPlayer1Name">Игрок 1</div>
+                        <div class="dry-stats">
+                            <div class="dry-stat">Сухие победы: <span id="dryWins1">0</span></div>
+                            <div class="dry-stat">Сухие поражения: <span id="dryLosses1">0</span></div>
+                        </div>
+                    </div>
+                    <div class="dry-stat-card">
+                        <div class="player-name" id="dryPlayer2Name">Игрок 2</div>
+                        <div class="dry-stats">
+                            <div class="dry-stat">Сухие победы: <span id="dryWins2">0</span></div>
+                            <div class="dry-stat">Сухие поражения: <span id="dryLosses2">0</span></div>
+                        </div>
+                    </div>
+                </div>
             </div>
             
-            <div class="detailed-stats">
-                <h3>📊 Детальная статистика</h3>
-                <div id="detailedStatsContent"></div>
-            </div>
-            
+            <!-- Дополнительная информация -->
             <div class="additional-info">
                 <h3>📈 Дополнительные показатели</h3>
                 <div id="additionalInfoContent"></div>
