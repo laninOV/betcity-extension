@@ -1,145 +1,113 @@
-document.addEventListener('DOMContentLoaded', function() {
-    const analyzeBtn = document.getElementById('analyzeBtn');
-    const loading = document.getElementById('loading');
-    const results = document.getElementById('results');
-    const error = document.getElementById('error');
+document.addEventListener('DOMContentLoaded', () => {
+  const analyzeBtn = document.getElementById('analyzeBtn');
+  const loading    = document.getElementById('loading');
+  const results    = document.getElementById('results');
+  const error      = document.getElementById('error');
 
-    analyzeBtn.addEventListener('click', async function() {
-        console.log('🎾 Кнопка анализа нажата');
-        
-        hideAllSections();
-        loading.classList.remove('hidden');
-        analyzeBtn.disabled = true;
+  analyzeBtn.addEventListener('click', async () => {
+    loading.classList.remove('hidden');
+    analyzeBtn.disabled = true;
+    results.classList.add('hidden');
+    error.classList.add('hidden');
+    try {
+      const [tab]    = await chrome.tabs.query({active: true, currentWindow: true});
+      const response = await chrome.tabs.sendMessage(tab.id, {action:'analyze'});
+      if (response.success) displayResults(response.data);
+      else showError(response.error);
+    } catch (e) {
+      showError(e.message);
+    } finally {
+      loading.classList.add('hidden');
+      analyzeBtn.disabled = false;
+    }
+  });
 
-        try {
-            const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
-            console.log('📄 Активная вкладка:', tab.url);
-            
-            const response = await chrome.tabs.sendMessage(tab.id, {
-                action: 'analyze'
-            });
-            
-            console.log('📊 Ответ от content script:', response);
+  function showError(msg) {
+    error.querySelector('p').textContent = `❌ ${msg}`;
+    error.classList.remove('hidden');
+  }
 
-            if (response && response.success) {
-                displayResults(response.data);
-            } else {
-                showError(response?.error || 'Не удалось получить данные для анализа');
-            }
-        } catch (err) {
-            console.error('❌ Ошибка при анализе:', err);
-            showError('Ошибка при анализе данных: ' + err.message);
-        } finally {
-            loading.classList.add('hidden');
-            analyzeBtn.disabled = false;
-        }
+  function displayResults(data) {
+    const name1 = data.players[0].name;
+    const name2 = data.players[1].name;
+
+    // top info
+    document.getElementById('confidenceIcon').textContent = data.confidence;
+    document.getElementById('confidenceText').textContent =
+      data.confidence==='🟢'?'Высокая':data.confidence==='🟡'?'Средняя':'Низкая';
+    document.getElementById('favoriteText').textContent = data.favorite;
+
+    // main table
+    const tbody = document.getElementById('mainTableBody');
+    tbody.innerHTML = '';
+    data.players.forEach(p => {
+      const r = tbody.insertRow();
+      r.insertCell(0).textContent = p.name;
+      r.insertCell(1).textContent = p.strength;
+      r.insertCell(2).textContent = p.probability;
+      r.insertCell(3).textContent = p.h2h;
+      r.insertCell(4).textContent = p.stability;
     });
 
-    function hideAllSections() {
-        loading.classList.add('hidden');
-        results.classList.add('hidden');
-        error.classList.add('hidden');
+    // strength
+    ['','','','b'].forEach(suf => {
+      document.getElementById(`strengthName1${suf}`)
+        .textContent = name1 + ': ';
+      document.getElementById(`strengthName2${suf}`)
+        .textContent = ' : ' + name2;
+    });
+    document.getElementById('s2Player1').textContent = data.strengthData.s2[0];
+    document.getElementById('s2Player2').textContent = data.strengthData.s2[1];
+    document.getElementById('s5Player1').textContent = data.strengthData.s5[0];
+    document.getElementById('s5Player2').textContent = data.strengthData.s5[1];
+
+    // sets
+    document.getElementById('p1Sets').textContent = name1;
+    document.getElementById('p2Sets').textContent = name2;
+    const stb = document.getElementById('setsTableBody');
+    stb.innerHTML = '';
+    ['set1','set2','set3','set4','set5'].forEach((k,i)=>{
+      const r = stb.insertRow();
+      r.insertCell(0).textContent = (i+1).toString();
+      r.insertCell(1).textContent = data.setWins[k][0];
+      r.insertCell(2).textContent = data.setWins[k][1];
+    });
+
+    // dry games
+    ['','b'].forEach(suf => {
+      document.getElementById(`dryName1${suf}`).textContent = name1 + ': ';
+      document.getElementById(`dryName2${suf}`).textContent = ' : ' + name2;
+    });
+    document.getElementById('dryWins1').textContent   = data.dryGames.player1.wins;
+    document.getElementById('dryWins2').textContent   = data.dryGames.player2.wins;
+    document.getElementById('dryLosses1').textContent = data.dryGames.player1.losses;
+    document.getElementById('dryLosses2').textContent = data.dryGames.player2.losses;
+
+    // match visualization
+    document.getElementById('vizName1').textContent = name1 + ':';
+    document.getElementById('vizName2').textContent = name2 + ':';
+    document.getElementById('matchViz1').textContent = 
+      data.matchVisualizations.player1.replace(/◯/g,'🟢').replace(/⚫/g,'🔴');
+    document.getElementById('matchViz2').textContent = 
+      data.matchVisualizations.player2.replace(/◯/g,'🟢').replace(/⚫/g,'🔴');
+
+    if (data.matchVisualizations.h2h) {
+      document.getElementById('h2hVizSection').style.display = 'block';
+      document.getElementById('h2hViz').textContent = 
+        data.matchVisualizations.h2h.replace(/◯/g,'🟢').replace(/⚫/g,'🔴');
     }
 
-    function showError(message) {
-        error.querySelector('p').textContent = `❌ Ошибка: ${message}`;
-        error.classList.remove('hidden');
-    }
+    // key data
+    document.getElementById('labelA').textContent  = name1;
+    document.getElementById('labelB').textContent  = name2;
+    document.getElementById('labelA2').textContent = name1;
+    document.getElementById('labelB2').textContent = name2;
+    document.getElementById('h2hTotal').textContent = data.additionalInfo['H2H всего встреч'];
+    document.getElementById('h2hPercA').textContent  = data.additionalInfo['Процент побед A в H2H'];
+    document.getElementById('h2hPercB').textContent  = data.additionalInfo['Процент побед B в H2H'];
+    document.getElementById('h2hDryA').textContent  = data.additionalInfo['H2H сухие победы A'];
+    document.getElementById('h2hDryB').textContent  = data.additionalInfo['H2H сухие победы B'];
 
-    function displayResults(data) {
-        console.log('🎯 Отображаем результаты:', data);
-        
-        // Уровень уверенности
-        document.getElementById('confidenceIcon').textContent = data.confidence;
-        document.getElementById('confidenceText').textContent = getConfidenceText(data.confidence);
-
-        // Основная таблица
-        const tbody = document.getElementById('playersTableBody');
-        tbody.innerHTML = '';
-        
-        data.players.forEach(player => {
-            const row = tbody.insertRow();
-            row.insertCell(0).textContent = player.name;
-            row.insertCell(1).textContent = player.strength;
-            row.insertCell(2).textContent = player.probability;
-            row.insertCell(3).textContent = player.h2h;
-            row.insertCell(4).textContent = player.stability;
-        });
-
-        // Показатели силы
-        document.getElementById('player1Name2').textContent = data.players[0].name;
-        document.getElementById('player2Name2').textContent = data.players[1].name;
-        document.getElementById('player1Name5').textContent = data.players[0].name;
-        document.getElementById('player2Name5').textContent = data.players[1].name;
-        
-        document.getElementById('s2games1').textContent = data.strengthIndicators.s2games[0];
-        document.getElementById('s2games2').textContent = data.strengthIndicators.s2games[1];
-        document.getElementById('s5games1').textContent = data.strengthIndicators.s5games[0];
-        document.getElementById('s5games2').textContent = data.strengthIndicators.s5games[1];
-
-        // Вероятности по сетам
-        document.getElementById('set1Prob').textContent = data.setProbabilities.set1;
-        document.getElementById('set2Prob').textContent = data.setProbabilities.set2;
-        document.getElementById('set3Prob').textContent = data.setProbabilities.set3;
-        document.getElementById('set4Prob').textContent = data.setProbabilities.set4;
-
-        // Фаворит и рекомендация
-        document.getElementById('favoriteInfo').textContent = data.favorite;
-        document.getElementById('adviceText').textContent = data.advice;
-
-        // H2H информация
-        document.getElementById('h2hInfo').textContent = data.h2hInfo;
-        document.getElementById('h2hDryWins').textContent = data.h2hDryWins;
-
-        // Сухие партии
-        document.getElementById('dryPlayer1Name').textContent = data.players[0].name;
-        document.getElementById('dryPlayer2Name').textContent = data.players[1].name;
-        document.getElementById('dryWins1').textContent = data.dryGames.player1.wins;
-        document.getElementById('dryLosses1').textContent = data.dryGames.player1.losses;
-        document.getElementById('dryWins2').textContent = data.dryGames.player2.wins;
-        document.getElementById('dryLosses2').textContent = data.dryGames.player2.losses;
-
-        // Дополнительная информация
-        displayAdditionalInfo(data.additionalInfo);
-
-        results.classList.remove('hidden');
-    }
-
-    function displayAdditionalInfo(info) {
-        const container = document.getElementById('additionalInfoContent');
-        container.innerHTML = '';
-
-        if (!info) return;
-
-        const grid = document.createElement('div');
-        grid.className = 'additional-grid';
-
-        Object.entries(info).forEach(([key, value]) => {
-            const item = document.createElement('div');
-            item.className = 'additional-item';
-            
-            const label = document.createElement('div');
-            label.className = 'label';
-            label.textContent = key;
-            
-            const valueDiv = document.createElement('div');
-            valueDiv.className = 'value';
-            valueDiv.textContent = value;
-            
-            item.appendChild(label);
-            item.appendChild(valueDiv);
-            grid.appendChild(item);
-        });
-
-        container.appendChild(grid);
-    }
-
-    function getConfidenceText(confidence) {
-        switch(confidence) {
-            case '🟢': return 'Высокая уверенность';
-            case '🟡': return 'Средняя уверенность';
-            case '🔴': return 'Низкая уверенность';
-            default: return 'Неопределенная уверенность';
-        }
-    }
+    results.classList.remove('hidden');
+  }
 });
