@@ -1,16 +1,16 @@
 {
   "manifest_version": 3,
-  "name": "Betcity Extension",
+  "name": "Tennis Analysis Pro",
   "version": "1.0",
-  "description": "Анализ матчей на Betcity",
-  "permissions": ["activeTab", "scripting", "storage"],
+  "description": "Анализ матчей по настольному теннису",
+  "permissions": ["activeTab"],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Анализировать"
+    "default_title": "Анализировать матч"
   },
   "content_scripts": [
     {
-      "matches": ["https://betcity.ru/*"],
+      "matches": ["https://betcity.ru/*", "https://*.betcity.ru/*"],
       "js": ["content.js"],
       "run_at": "document_idle"
     }

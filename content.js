@@ -89,7 +89,6 @@
   }
 
   function calcSetWins(games) {
-    // Для каждого сета: [выиграл игрок, проиграл, всего]
     const res = [
       { win: 0, lose: 0, total: 0 },
       { win: 0, lose: 0, total: 0 },
@@ -236,9 +235,11 @@
       favorite: prob > 0.5 ? A.player : B.player,
       h2h: {
         total: h2hData.total,
-        winsA: h2hData.wA,
-        winsB: h2hData.wB,
-        visualization: createMatchVisualization(h2hData.h2hGames)
+        winsFav: prob > 0.5 ? h2hData.wA : h2hData.wB,
+        winsUnd: prob > 0.5 ? h2hData.wB : h2hData.wA,
+        dryFav: prob > 0.5 ? h2hData.dryWinsA : h2hData.dryWinsB,
+        dryUnd: prob > 0.5 ? h2hData.dryWinsB : h2hData.dryWinsA,
+        visualization: prob > 0.5 ? createMatchVisualization(h2hData.h2hGames) : createMatchVisualization(h2hData.h2hGames.map(g => ({win: 1 - g.win}))),
       },
       advice: getAdvice(prob, 1 - prob, vA, vB, (50 + 50 * sA), (50 + 50 * sB), h2hData)
     } };

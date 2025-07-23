@@ -10,10 +10,21 @@ document.addEventListener('DOMContentLoaded', () => {
     error.classList.add('hidden');
 
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs.length === 0) {
+        loading.classList.add('hidden');
+        error.querySelector('p').textContent = 'Активная вкладка не найдена.';
+        error.classList.remove('hidden');
+        return;
+      }
       chrome.tabs.sendMessage(tabs[0].id, { action: "analyze" }, (response) => {
         loading.classList.add('hidden');
+        if (chrome.runtime.lastError) {
+          error.querySelector('p').textContent = 'Ошибка связи: ' + chrome.runtime.lastError.message;
+          error.classList.remove('hidden');
+          return;
+        }
         if (!response.success) {
-          error.querySelector('p').textContent = response.error;
+          error.querySelector('p').textContent = 'Ошибка анализа: ' + response.error;
           error.classList.remove('hidden');
           return;
         }
@@ -61,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('p2Sets').textContent = d.playerB.name;
         const setsTableBody = document.getElementById('setsTableBody');
         setsTableBody.innerHTML = '';
-        let totalSets1 = 0, totalSets2 = 0;
+        let total1 = 0, total2 = 0;
         Object.entries(d.playerA.setWins).forEach(([set, [p1, p2]]) => {
           const row = `
             <tr>
@@ -71,11 +82,11 @@ document.addEventListener('DOMContentLoaded', () => {
             </tr>
           `;
           setsTableBody.insertAdjacentHTML('beforeend', row);
-          totalSets1 += parseInt(p1.split('/')[0]);
-          totalSets2 += parseInt(d.playerB.setWins[set][0].split('/')[0]);
+          total1 += parseInt(p1.split('/')[0]);
+          total2 += parseInt(d.playerB.setWins[set][0].split('/')[0]);
         });
-        document.getElementById('totalSets1').textContent = totalSets1;
-        document.getElementById('totalSets2').textContent = totalSets2;
+        document.getElementById('totalSets1').textContent = total1;
+        document.getElementById('totalSets2').textContent = total2;
 
         // Визуализация
         const isFavA = parseFloat(d.playerA.probability) > 50;
