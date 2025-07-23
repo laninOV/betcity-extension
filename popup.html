@@ -47,24 +47,49 @@
       </table>
 
       <div class="stats-grid">
+
+        <!-- 📊 Статистика игрока -->
         <div class="stats-card">
-          <h4>💪 Показатели силы</h4>
-          <div class="key-stats">
-            <div class="stat-item">
-              <span id="strengthName1" class="player-name"></span>
-              <span>S за 2</span>
-              <span id="s2Player1"></span> / <span id="s2Player2"></span>
-              <span id="strengthName2" class="player-name"></span>
-            </div>
-            <div class="stat-item">
-              <span id="strengthName1b" class="player-name"></span>
-              <span>S за 5</span>
-              <span id="s5Player1"></span> / <span id="s5Player2"></span>
-              <span id="strengthName2b" class="player-name"></span>
-            </div>
-          </div>
+          <h4>📊 Статистика игрока</h4>
+          <table class="mini-table">
+            <thead>
+              <tr>
+                <th>Показатель</th>
+                <th id="statName1"></th>
+                <th id="statName2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>S₂</td>
+                <td id="s2Player1"></td>
+                <td id="s2Player2"></td>
+              </tr>
+              <tr>
+                <td>S₅</td>
+                <td id="s5Player1"></td>
+                <td id="s5Player2"></td>
+              </tr>
+              <tr>
+                <td>Сухие победы</td>
+                <td id="dryWins1"></td>
+                <td id="dryWins2"></td>
+              </tr>
+              <tr>
+                <td>Сухие поражения</td>
+                <td id="dryLosses1"></td>
+                <td id="dryLosses2"></td>
+              </tr>
+              <tr>
+                <td>H2H сухие пораж.</td>
+                <td id="h2hDryLoss1"></td>
+                <td id="h2hDryLoss2"></td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
+        <!-- 🎯 Победы в сетах -->
         <div class="stats-card">
           <h4>🎯 Победы в сетах</h4>
           <table class="mini-table">
@@ -76,40 +101,32 @@
               </tr>
             </thead>
             <tbody id="setsTableBody"></tbody>
+            <tfoot>
+              <tr>
+                <td>Итого</td>
+                <td id="totalSets1"></td>
+                <td id="totalSets2"></td>
+              </tr>
+            </tfoot>
           </table>
         </div>
 
-        <div class="stats-card">
-          <h4>🔥 Сухие партии</h4>
-          <div class="key-stats">
-            <div class="stat-item">
-              <span id="dryName1" class="player-name"></span>
-              Побед: <span id="dryWins1"></span> / <span id="dryWins2"></span>
-              <span id="dryName2" class="player-name"></span>
-            </div>
-            <div class="stat-item">
-              <span id="dryName1b" class="player-name"></span>
-              Пораж.: <span id="dryLosses1"></span> / <span id="dryLosses2"></span>
-              <span id="dryName2b" class="player-name"></span>
-            </div>
-          </div>
-        </div>
-
+        <!-- 🎲 Визуализация результатов -->
         <div class="stats-card">
           <h4>🎲 Визуализация результатов (последние 10 игр)</h4>
           <div class="match-visualization">
             <div class="match-viz-row">
-              <span id="vizName1" class="player-name-viz"></span>
-              <span id="matchViz1" class="dots-viz"></span>
+              <span id="vizNameFav" class="player-name-viz"></span>
+              <span id="matchVizFav" class="dots-viz"></span>
             </div>
             <div class="match-viz-row">
-              <span id="vizName2" class="player-name-viz"></span>
-              <span id="matchViz2" class="dots-viz"></span>
+              <span id="vizNameUnd" class="player-name-viz"></span>
+              <span id="matchVizUnd" class="dots-viz"></span>
             </div>
             <div id="h2hVizSection" class="match-viz-h2h" style="display:none;">
               <div class="h2h-title">Очные встречи:</div>
               <div class="match-viz-row">
-                <span class="h2h-label">H2H результаты:</span>
+                <span class="h2h-label">H2H результаты (<span id="h2hFavName"></span>):</span>
                 <span id="h2hViz" class="dots-viz"></span>
               </div>
             </div>
@@ -120,24 +137,6 @@
           </div>
         </div>
 
-        <div class="stats-card">
-          <h4>📈 Ключевые данные</h4>
-          <table class="mini-table key-data-table">
-            <thead>
-              <tr>
-                <th>Показатель</th>
-                <th>Значение</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td>H2H встреч</td><td id="h2hTotal"></td></tr>
-              <tr><td>% побед <span id="labelA"></span></td><td id="h2hPercA"></td></tr>
-              <tr><td>% побед <span id="labelB"></span></td><td id="h2hPercB"></td></tr>
-              <tr><td>H2H сухие победы <span id="labelA2"></span></td><td id="h2hDryA"></td></tr>
-              <tr><td>H2H сухие победы <span id="labelB2"></span></td><td id="h2hDryB"></td></tr>
-            </tbody>
-          </table>
-        </div>
       </div>
     </div>
   </div>
