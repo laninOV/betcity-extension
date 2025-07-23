@@ -89,32 +89,33 @@
   }
 
   function calcSetWins(games) {
-    const wins = { set1: [0, 0], set2: [0, 0], set3: [0, 0], set4: [0, 0], set5: [0, 0] };
-    const total = { set1: 0, set2: 0, set3: 0, set4: 0, set5: 0 };
-
-    games.forEach(g => {
-      g.pts.forEach((pair, idx) => {
-        if (idx >= 5) return;
-        const key = `set${idx + 1}`;
-        const [a, b] = pair;
-        if (a > b) wins[key][0] += 1;
-        else wins[key][1] += 1;
-        total[key] += 1;
+    // Для каждого сета: [выиграл игрок, проиграл, всего]
+    const res = [
+      { win: 0, lose: 0, total: 0 },
+      { win: 0, lose: 0, total: 0 },
+      { win: 0, lose: 0, total: 0 },
+      { win: 0, lose: 0, total: 0 },
+      { win: 0, lose: 0, total: 0 }
+    ];
+    games.forEach(game => {
+      game.pts.forEach(([a, b], idx) => {
+        if (a > b)      res[idx].win++;
+        else if (a < b) res[idx].lose++;
+        res[idx].total++;
       });
     });
-
     const out = {};
-    Object.keys(wins).forEach(key => {
-      out[key] = [
-        `${wins[key][0]}/${total[key]}`,
-        `${wins[key][1]}/${total[key]}`
+    for (let i = 0; i < 5; ++i) {
+      out[`set${i+1}`] = [
+        `${res[i].win}/${res[i].total}`,
+        `${res[i].lose}/${res[i].total}`
       ];
-    });
+    }
     return out;
   }
 
   function createMatchVisualization(games) {
-    return games.slice(0, 10).map(g => g.win ? '◯' : '⚫').join(' ');
+    return games.slice(0, 10).map(g => g.win ? '🟢' : '🔴').join(' ');
   }
 
   function parseH2H(A, B) {
@@ -166,53 +167,13 @@
   }
 
   function logStatistics(playerData) {
-    console.group(`📊 Статистика игрока: ${playerData.player}`);
-    
-    const games = Array.isArray(playerData.games) ? playerData.games : [];
-    console.log(`🎮 Всего матчей: ${games.length}`);
-    console.log(`✅ Побед: ${games.filter(g => g.win).length}`);
-    console.log(`❌ Поражений: ${games.filter(g => !g.win).length}`);
-    
-    console.group("📋 Детали матчей:");
-    games.forEach((game, index) => {
-      console.log(`Матч ${index + 1}:`, {
-        дата: game.date.toLocaleDateString('ru-RU'),
-        результат: game.win ? 'Победа' : 'Поражение',
-        счетПоСетам: `${game.playerSets}:${game.oppSets}`,
-        очкиПоСетам: game.pts.map(([a, b]) => `${a}:${b}`).join(', '),
-        гандикап: game.handicap,
-        дниНазад: game.diffDays
-      });
-    });
-    console.groupEnd();
-    
-    const setWins = calcSetWins(games);
-    console.group("🎯 Победы в сетах:");
-    Object.entries(setWins).forEach(([setNum, [player, opp]]) => {
-      console.log(`${setNum}: Игрок ${player}, Соперник ${opp}`);
-    });
-    console.groupEnd();
-    
-    const dryGames = calcDryGames(games);
-    console.log(`🏆 Сухие победы: ${dryGames.wins}`);
-    console.log(`💀 Сухие поражения: ${dryGames.losses}`);
-    
-    const baseStrength = calcBaseS(games);
-    const variance = calcForaVariance(games);
-    const stability = calcStability(variance);
-    
-    console.log(`💪 Базовая сила: ${baseStrength.toFixed(3)}`);
-    console.log(`📈 Стабильность: ${stability}%`);
-    console.log(`📊 Дисперсия форы: ${variance.toFixed(2)}`);
-    
-    console.groupEnd();
+    // Пустая функция для сохранения количества строк
   }
 
   function performAnalysis() {
     const tables = document.querySelectorAll('table.ev-mstat-tbl');
     if (tables.length < 2) {
-      console.error("❌ Недостаточно таблиц для анализа");
-      return { error: "Insufficient data tables" };
+      return { success: false, error: "Insufficient data tables" };
     }
 
     const A = parseSection(tables[0]);
@@ -221,75 +182,71 @@
     const gamesA = Array.isArray(A.games) ? A.games : [];
     const gamesB = Array.isArray(B.games) ? B.games : [];
     
-    console.clear();
-    console.log("🔍 НАЧАЛО АНАЛИЗА СТАТИСТИКИ");
-    console.log("=".repeat(50));
-    
-    logStatistics(A);
-    logStatistics(B);
-
     if (!gamesA.length || !gamesB.length) {
-      console.error("❌ Нет данных о матчах для одного из игроков");
-      return { error: "No game data" };
+      return { success: false, error: "No game data" };
     }
 
-    let h2hData = [];
-    try {
-      h2hData = parseH2H(A.player, B.player);
-    } catch (e) {
-      console.warn("⚠️ Ошибка при поиске истории встреч:", e.message);
-    }
+    let h2hData = parseH2H(A.player, B.player);
 
     const sA = strengthAdj(gamesA), sB = strengthAdj(gamesB);
     const vA = calcForaVariance(gamesA), vB = calcForaVariance(gamesB);
     const stA = calcStability(vA), stB = calcStability(vB);
     
-    console.group("🎯 ФИНАЛЬНЫЕ РАСЧЕТЫ");
-    console.log(`Сила A: ${sA.toFixed(3)}, Сила B: ${sB.toFixed(3)}`);
-    console.log(`Стабильность A: ${stA}%, Стабильность B: ${stB}%`);
-    console.groupEnd();
-
     let h2hAdj = 0;
     if (h2hData.total >= 3) {
       const h2hWins = h2hData.wA;
       const h2hRate = h2hWins / h2hData.total;
       h2hAdj = cfg.h2hK * (h2hRate - 0.5);
-      console.log(`📊 H2H корректировка: ${h2hAdj.toFixed(3)} (на основе ${h2hData.total} встреч)`);
     }
 
     const diff = sA - sB + h2hAdj;
     const prob = 1 / (1 + Math.exp(-cfg.k * diff));
     
-    console.log(`🎲 Итоговая вероятность победы A: ${(prob * 100).toFixed(1)}%`);
-    console.log("=".repeat(50));
-
-    return {
-      playerA: { 
-        name: A.player, 
-        strength: sA, 
-        stability: stA, 
-        games: gamesA.length,
+    // Структура данных для popup
+    return { success: true, data: {
+      playerA: {
+        name: A.player,
+        strength: (50 + 50 * sA).toFixed(1),
+        probability: (prob * 100).toFixed(1),
+        h2h: `${h2hData.wA}-${h2hData.wB}`,
+        stability: stA,
+        s2: calcBaseS(gamesA, 2).toFixed(3),
+        s5: calcBaseS(gamesA).toFixed(3),
+        dryWins: calcDryGames(gamesA).wins,
+        dryLosses: calcDryGames(gamesA).losses,
+        h2hDryLoss: h2hData.dryWinsA,
         setWins: calcSetWins(gamesA),
-        dryGames: calcDryGames(gamesA),
         visualization: createMatchVisualization(gamesA)
       },
-      playerB: { 
-        name: B.player, 
-        strength: sB, 
-        stability: stB, 
-        games: gamesB.length,
+      playerB: {
+        name: B.player,
+        strength: (50 + 50 * sB).toFixed(1),
+        probability: ((1 - prob) * 100).toFixed(1),
+        h2h: `${h2hData.wB}-${h2hData.wA}`,
+        stability: stB,
+        s2: calcBaseS(gamesB, 2).toFixed(3),
+        s5: calcBaseS(gamesB).toFixed(3),
+        dryWins: calcDryGames(gamesB).wins,
+        dryLosses: calcDryGames(gamesB).losses,
+        h2hDryLoss: h2hData.dryWinsB,
         setWins: calcSetWins(gamesB),
-        dryGames: calcDryGames(gamesB),
         visualization: createMatchVisualization(gamesB)
       },
-      prediction: { probability: prob, h2hMatches: h2hData.total }
-    };
+      confidence: getConfidence(prob, 1 - prob, vA, vB, h2hData.total),
+      favorite: prob > 0.5 ? A.player : B.player,
+      h2h: {
+        total: h2hData.total,
+        winsA: h2hData.wA,
+        winsB: h2hData.wB,
+        visualization: createMatchVisualization(h2hData.h2hGames)
+      },
+      advice: getAdvice(prob, 1 - prob, vA, vB, (50 + 50 * sA), (50 + 50 * sB), h2hData)
+    } };
   }
 
-  chrome.runtime.onMessage.addListener((req, sender, send) => {
+  chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
     if (req.action === "analyze") {
-      try { send({ success: true, data: performAnalysis() }); }
-      catch (e) { send({ success: false, error: e.message }); }
+      sendResponse(performAnalysis());
       return true;
     }
   });
