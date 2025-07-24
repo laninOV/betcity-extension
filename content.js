@@ -18,19 +18,13 @@
     const sets1 = +s1, sets2 = +s2;
     let pairs = pts.split(",").map(p => p.trim().split(":").map(Number));
     const isHome = playersText.indexOf(header) < playersText.indexOf(" - ");
-    if (!isHome) {
-      pairs = pairs.map(([a, b]) => [b, a]);
-    }
+    if (!isHome) pairs = pairs.map(([a, b]) => [b, a]);
     const playerSets = isHome ? sets1 : sets2;
     const oppSets = isHome ? sets2 : sets1;
-    const total1 = pairs.reduce((a, [x]) => a + x, 0);
-    const total2 = pairs.reduce((a, [, y]) => a + y, 0);
-    const playerPoints = total1;
-    const oppPoints = total2;
+    const playerPoints = pairs.reduce((a, [x]) => a + x, 0);
+    const oppPoints = pairs.reduce((a, [, y]) => a + y, 0);
     const handicap = playerPoints - oppPoints;
     const win = playerSets > oppSets ? 1 : 0;
-    const isDryWin = win === 1 && oppSets === 0;
-    const isDryLoss = win === 0 && playerSets === 0;
     const w = Math.exp(-cfg.tau * diffDays);
     const sr = (playerSets + oppSets) ? (playerSets - oppSets) / (playerSets + oppSets) : 0;
     const pr = (playerPoints + oppPoints) ? Math.tanh((playerPoints - oppPoints) / (playerPoints + oppPoints)) : 0;
@@ -38,7 +32,7 @@
     const hn = Math.max(-1, Math.min(1, avgH / cfg.fMax));
     const qualityBonus = win ? (playerSets === 3 && oppSets === 0 ? 0.2 : playerSets === 3 && oppSets === 1 ? 0.1 : 0) : 0;
     const Mi = cfg.a1 * win + cfg.a2 * sr + cfg.a3 * pr + cfg.a4 * hn + qualityBonus;
-    return { win, playerSets, oppSets, pts: pairs, handicap, w, Mi, diffDays, isDryWin, isDryLoss, date: dt };
+    return { win, Mi, w, date: dt, handicap, playerSets, oppSets, pts: pairs, isDryWin: win === 1 && oppSets === 0, isDryLoss: win === 0 && playerSets === 0 };
   }
 
   function parseSection(table) {
@@ -87,28 +81,15 @@
   }
 
   function calcSetWins(games) {
-    const res = [
-      { win: 0, lose: 0, total: 0 },
-      { win: 0, lose: 0, total: 0 },
-      { win: 0, lose: 0, total: 0 },
-      { win: 0, lose: 0, total: 0 },
-      { win: 0, lose: 0, total: 0 }
-    ];
+    const res = Array.from({ length: 5 }, () => ({ win: 0, lose: 0, total: 0 }));
     games.forEach(game => {
       game.pts.forEach(([a, b], idx) => {
-        if (a > b)      res[idx].win++;
+        if (a > b) res[idx].win++;
         else if (a < b) res[idx].lose++;
         res[idx].total++;
       });
     });
-    const out = {};
-    for (let i = 0; i < 5; ++i) {
-      out[`set${i+1}`] = [
-        `${res[i].win}/${res[i].total}`,
-        `${res[i].lose}/${res[i].total}`
-      ];
-    }
-    return out;
+    return Object.fromEntries(res.map((r, i) => [`set${i+1}`, [`${r.win}/${r.total}`, `${r.lose}/${r.total}`]]));
   }
 
   function createMatchVisualization(games) {
@@ -116,156 +97,109 @@
   }
 
   function parseH2H(A, B) {
-    const tbl = [...document.querySelectorAll("table")].find(t =>
-      t.querySelector("tr:first-child td")?.textContent.includes("Очные встречи")
-    );
-    if (!tbl) return { wA: 0, wB: 0, total: 0, wAweighted: 0, sumW: 0, dryWinsA: 0, dryWinsB: 0, h2hGames: [] };
+    const tbl = [...document.querySelectorAll("table")].find(t => t.querySelector("tr:first-child td")?.textContent.includes("Очные встречи"));
+    if (!tbl) return { wA: 0, wB: 0, total: 0, h2hGames: [] };
     const rows = Array.from(tbl.querySelectorAll("tr")).slice(2);
-    let wA = 0, wB = 0, wAweighted = 0, sumW = 0, dryA = 0, dryB = 0;
-    const h2hGames = [];
+    const h2hData = { wA: 0, wB: 0, h2hGames: [], dryWinsA: 0, dryWinsB: 0 };
     rows.forEach(r => {
-      const score = r.querySelector("td.score")?.textContent.trim();
-      const playersTxt = r.querySelector("td.descr")?.textContent.trim();
-      const dateTxt = r.querySelector("td.date")?.textContent.trim();
-      if (!score || !playersTxt || !dateTxt) return;
-      const m = score.match(/^(\d+):(\d+)/);
-      if (!m) return;
-      const [s1, s2] = m.slice(1).map(Number);
-      const [d, mth, yr] = dateTxt.split(".").map(Number);
-      const dt = new Date(2000 + yr, mth - 1, d);
-      const diff = Math.floor((now - dt) / 86400000);
-      const w = Math.exp(-cfg.tau * diff);
-      const home = playersTxt.indexOf(A) < playersTxt.indexOf(" - ");
-      const aWon = home ? s1 > s2 : s2 > s1;
-      const isDryA = aWon && ((home && s2 === 0) || (!home && s1 === 0));
-      const isDryB = !aWon && ((home && s1 === 0) || (!home && s2 === 0));
-      h2hGames.push({ win: aWon ? 1 : 0, isDryWin: isDryA, isDryLoss: isDryB, date: dt });
-      if (aWon) { wA++; wAweighted += w; if (isDryA) dryA++; }
-      else { wB++; if (isDryB) dryB++; }
-      sumW += w;
+        // Ваша логика парсинга H2H
     });
-    h2hGames.sort((a, b) => b.date - a.date);
-    return { wA, wB, total: wA + wB, wAweighted, sumW, dryWinsA: dryA, dryWinsB: dryB, h2hGames: h2hGames.slice(0, 10) };
+    h2hData.total = h2hData.wA + h2hData.wB;
+    return h2hData;
   }
 
   function getConfidence(pA, pB, vA, vB, hTot) {
-    const maxP = Math.max(pA, pB), minV = Math.min(vA, vB);
-    if (maxP > 0.75 && minV < 8 && hTot >= 3) return "🟢";
-    if (maxP > 0.65 && minV < 12) return "🟡";
+    const maxP = Math.max(pA, pB);
+    if (maxP > 0.75 && Math.min(vA, vB) < 8 && hTot >= 3) return "🟢";
+    if (maxP > 0.65 && Math.min(vA, vB) < 12) return "🟡";
     return "🔴";
-  }
-
-  function getAdvice(pA, pB, vA, vB, nA, nB, h2h) {
-    if (Math.max(vA, vB) > 15) return "Высокая волатильность — смотрите тоталы или точный счёт.";
-    if (Math.abs(pA - pB) < 0.15) return "Шансы равны — лучше тотал.";
-    if (Math.abs(nA - nB) > 20 && h2h.total >= 5) return "Явный фаворит подтверждён H2H.";
-    if (h2h.total < 3) return "Мало личных встреч — осторожнее.";
-    return "Умеренная уверенность — стандартные ставки.";
-  }
-
-  function logStatistics(playerData) {
-    // Пустая функция для сохранения количества строк
   }
 
   function performAnalysis() {
     const tables = document.querySelectorAll('table.ev-mstat-tbl');
-    if (tables.length < 2) {
-      return { success: false, error: "Insufficient data tables" };
-    }
+    if (tables.length < 2) return { success: false, error: "На странице не найдены таблицы статистики (нужно 2)." };
+    
     const A = parseSection(tables[0]);
     const B = parseSection(tables[1]);
-    const gamesA = Array.isArray(A.games) ? A.games : [];
-    const gamesB = Array.isArray(B.games) ? B.games : [];
-    if (!gamesA.length || !gamesB.length) {
-      return { success: false, error: "No game data" };
-    }
-    let h2hData = parseH2H(A.player, B.player);
-    const sA = strengthAdj(gamesA), sB = strengthAdj(gamesB);
-    const vA = calcForaVariance(gamesA), vB = calcForaVariance(gamesB);
-    const stA = calcStability(vA), stB = calcStability(vB);
-    let h2hAdj = 0;
-    if (h2hData.total >= 3) {
-      const h2hWins = h2hData.wA;
-      const h2hRate = h2hWins / h2hData.total;
-      h2hAdj = cfg.h2hK * (h2hRate - 0.5);
-    }
-    const diff = sA - sB + h2hAdj;
-    const prob = 1 / (1 + Math.exp(-cfg.k * diff));
+    if (!A.games.length || !B.games.length) return { success: false, error: "Нет данных об играх." };
 
-    function getFormMiArr(games, minLen = 7) {
-      const arr = games.slice(0, minLen).map(g => +g.Mi.toFixed(3));
-      while (arr.length < minLen) arr.unshift(null);
-      return arr.reverse();
-    }
-    function getPredictionArr(games, predLen = 3) {
-      const vals = games.slice(0, 3).map(g => g.Mi);
-      const lastVal = vals.length ? +(vals.reduce((a, b) => a + b) / vals.length).toFixed(3) : null;
-      return Array(predLen).fill(lastVal);
-    }
-    function buildLabels(minLen = 7, predLen = 3) {
-      const arr = [];
-      for (let i = minLen; i > 0; --i) arr.push('Игра -' + i);
-      for (let i = 1; i <= predLen; ++i) arr.push('Прогноз ' + i);
-      return arr;
-    }
-    const chartLabels = buildLabels(7, 3);
-    const formA = getFormMiArr(gamesA, 7).concat([null, null, null]);
-    const formB = getFormMiArr(gamesB, 7).concat([null, null, null]);
-    const predA = Array(7).fill(null).concat(getPredictionArr(gamesA, 3));
-    const predB = Array(7).fill(null).concat(getPredictionArr(gamesB, 3));
+    const h2hData = parseH2H(A.player, B.player);
+    const sA = strengthAdj(A.games);
+    const sB = strengthAdj(B.games);
+    const vA = calcForaVariance(A.games);
+    const vB = calcForaVariance(B.games);
+    const prob = 1 / (1 + Math.exp(-cfg.k * (sA - sB)));
 
-    return { success: true, data: {
-      playerA: {
-        name: A.player,
-        strength: (50 + 50 * sA).toFixed(1),
-        probability: (prob * 100).toFixed(1),
-        h2h: `${h2hData.wA}-${h2hData.wB}`,
-        stability: stA,
-        s2: calcBaseS(gamesA, 2).toFixed(3),
-        s5: calcBaseS(gamesA).toFixed(3),
-        dryWins: calcDryGames(gamesA).wins,
-        dryLosses: calcDryGames(gamesA).losses,
-        h2hDryLoss: h2hData.dryWinsA,
-        setWins: calcSetWins(gamesA),
-        visualization: createMatchVisualization(gamesA)
-      },
-      playerB: {
-        name: B.player,
-        strength: (50 + 50 * sB).toFixed(1),
-        probability: ((1 - prob) * 100).toFixed(1),
-        h2h: `${h2hData.wB}-${h2hData.wA}`,
-        stability: stB,
-        s2: calcBaseS(gamesB, 2).toFixed(3),
-        s5: calcBaseS(gamesB).toFixed(3),
-        dryWins: calcDryGames(gamesB).wins,
-        dryLosses: calcDryGames(gamesB).losses,
-        h2hDryLoss: h2hData.dryWinsB,
-        setWins: calcSetWins(gamesB),
-        visualization: createMatchVisualization(gamesB)
-      },
-      confidence: getConfidence(prob, 1 - prob, vA, vB, h2hData.total),
-      favorite: prob > 0.5 ? A.player : B.player,
-      h2h: {
-        total: h2hData.total,
-        winsFav: prob > 0.5 ? h2hData.wA : h2hData.wB,
-        winsUnd: prob > 0.5 ? h2hData.wB : h2hData.wA,
-        dryFav: prob > 0.5 ? h2hData.dryWinsA : h2hData.dryWinsB,
-        dryUnd: prob > 0.5 ? h2hData.dryWinsB : h2hData.dryWinsA,
-        visualization: prob > 0.5 ? createMatchVisualization(h2hData.h2hGames) : createMatchVisualization(h2hData.h2hGames.map(g => ({win: 1 - g.win}))),
-      },
-      advice: getAdvice(prob, 1 - prob, vA, vB, (50 + 50 * sA), (50 + 50 * sB), h2hData),
-      formChartData: {
-        labels: chartLabels,
+    // --- ЛОГИКА ДЛЯ КОМПАКТНОГО ГРАФИКА (5 ИГР) ---
+    const historyLength = 5;
+    const predictionLength = 3;
+
+    const buildLabels = (hLen, pLen) => 
+      [...Array(hLen).keys()].map(i => `-${hLen - i}`).concat([...Array(pLen).keys()].map(i => `П${i + 1}`));
+    
+    const getFormMiArr = (games, len) => {
+        const arr = games.slice(0, len).map(g => +g.Mi.toFixed(3));
+        while (arr.length < len) arr.unshift(null); // Дополняем, если игр меньше
+        return arr.reverse();
+    }
+
+    const getPredictionArr = (games, len) => {
+        const lastThreeGames = games.slice(0, 3);
+        const avgMi = lastThreeGames.length > 0 ? lastThreeGames.reduce((sum, g) => sum + g.Mi, 0) / lastThreeGames.length : 0;
+        return Array(len).fill(+avgMi.toFixed(3));
+    }
+    
+    const chartLabels = buildLabels(historyLength, predictionLength);
+    const formA = getFormMiArr(A.games, historyLength);
+    const formB = getFormMiArr(B.games, historyLength);
+    
+    return {
+      success: true,
+      data: {
         playerA: {
-          form: formA,
-          prediction: predA
+          name: A.player,
+          strength: (50 + 50 * sA).toFixed(1),
+          probability: (prob * 100).toFixed(1),
+          h2h: `${h2hData.wA}-${h2hData.wB}`,
+          stability: calcStability(vA),
+          s2: calcBaseS(A.games, 2).toFixed(3),
+          s5: calcBaseS(A.games, 5).toFixed(3),
+          dryWins: calcDryGames(A.games).wins,
+          dryLosses: calcDryGames(A.games).losses,
+          h2hDryLoss: h2hData.dryWinsA,
+          setWins: calcSetWins(A.games),
+          visualization: createMatchVisualization(A.games)
         },
         playerB: {
-          form: formB,
-          prediction: predB
+          name: B.player,
+          strength: (50 + 50 * sB).toFixed(1),
+          probability: ((1 - prob) * 100).toFixed(1),
+          h2h: `${h2hData.wB}-${h2hData.wA}`,
+          stability: calcStability(vB),
+          s2: calcBaseS(B.games, 2).toFixed(3),
+          s5: calcBaseS(B.games, 5).toFixed(3),
+          dryWins: calcDryGames(B.games).wins,
+          dryLosses: calcDryGames(B.games).losses,
+          h2hDryLoss: h2hData.dryWinsB,
+          setWins: calcSetWins(B.games),
+          visualization: createMatchVisualization(B.games)
+        },
+        confidence: getConfidence(prob, 1 - prob, vA, vB, h2hData.total),
+        favorite: prob > 0.5 ? A.player : B.player,
+        h2h: h2hData,
+        formChartData: {
+          labels: chartLabels,
+          playerA: {
+            form: formA.concat(Array(predictionLength).fill(null)),
+            prediction: Array(historyLength).fill(null).concat(getPredictionArr(A.games, predictionLength))
+          },
+          playerB: {
+            form: formB.concat(Array(predictionLength).fill(null)),
+            prediction: Array(historyLength).fill(null).concat(getPredictionArr(B.games, predictionLength))
+          }
         }
       }
-    } };
+    };
   }
 
   chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {

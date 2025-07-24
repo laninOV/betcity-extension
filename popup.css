@@ -1,3 +1,9 @@
+:root {
+  --green: #28a745;
+  --red: #dc3545;
+  --yellow: #ffc107;
+}
+
 body {
     width: 800px;
     height: 600px;
@@ -238,8 +244,50 @@ h1 {
     display: none !important;
 }
 
+/* Стили для визуализации матчей (сохранены из старой версии) */
+.match-visualization {
+    padding: 10px 0;
+}
+
+.match-viz-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.player-name-viz, .h2h-label {
+  width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+}
+
+.dots-viz {
+  font-size: 14px;
+  letter-spacing: 2px;
+}
+
+.legend {
+  font-size: 11px;
+  text-align: center;
+  margin-top: 10px;
+  opacity: 0.8;
+}
+
+.legend-item:first-child {
+  margin-right: 15px;
+}
+
+/* Стили для решения проблемы с ростом графика (сохранены из старой версии) */
+#player-form-section {
+  position: relative;
+  height: 220px;
+  padding: 10px;
+}
+
 /* Скроллбар для результатов */
-.results::-webфkit-scrollbar {
+.results::-webkit-scrollbar {
     width: 6px;
 }
 

@@ -51,38 +51,14 @@
           <h4>📊 Статистика игрока</h4>
           <table class="mini-table">
             <thead>
-              <tr>
-                <th>Показатель</th>
-                <th id="statName1"></th>
-                <th id="statName2"></th>
-              </tr>
+              <tr><th>Показатель</th><th id="statName1"></th><th id="statName2"></th></tr>
             </thead>
             <tbody>
-              <tr>
-                <td>S₂</td>
-                <td id="s2Player1"></td>
-                <td id="s2Player2"></td>
-              </tr>
-              <tr>
-                <td>S₅</td>
-                <td id="s5Player1"></td>
-                <td id="s5Player2"></td>
-              </tr>
-              <tr>
-                <td>Сухие победы</td>
-                <td id="dryWins1"></td>
-                <td id="dryWins2"></td>
-              </tr>
-              <tr>
-                <td>Сухие поражения</td>
-                <td id="dryLosses1"></td>
-                <td id="dryLosses2"></td>
-              </tr>
-              <tr>
-                <td>H2H сухие пораж.</td>
-                <td id="h2hDryLoss1"></td>
-                <td id="h2hDryLoss2"></td>
-              </tr>
+              <tr><td>S₂</td><td id="s2Player1"></td><td id="s2Player2"></td></tr>
+              <tr><td>S₅</td><td id="s5Player1"></td><td id="s5Player2"></td></tr>
+              <tr><td>Сухие победы</td><td id="dryWins1"></td><td id="dryWins2"></td></tr>
+              <tr><td>Сухие поражения</td><td id="dryLosses1"></td><td id="dryLosses2"></td></tr>
+              <tr><td>H2H сухие пораж.</td><td id="h2hDryLoss1"></td><td id="h2hDryLoss2"></td></tr>
             </tbody>
           </table>
         </div>
@@ -90,57 +66,35 @@
           <h4>🎯 Победы в сетах</h4>
           <table class="mini-table">
             <thead>
-              <tr>
-                <th>Сет</th>
-                <th id="p1Sets"></th>
-                <th id="p2Sets"></th>
-              </tr>
+              <tr><th>Сет</th><th id="p1Sets"></th><th id="p2Sets"></th></tr>
             </thead>
             <tbody id="setsTableBody"></tbody>
             <tfoot>
-              <tr>
-                <td>Итого</td>
-                <td id="totalSets1"></td>
-                <td id="totalSets2"></td>
-              </tr>
+              <tr><td>Итого</td><td id="totalSets1"></td><td id="totalSets2"></td></tr>
             </tfoot>
           </table>
         </div>
         <div class="stats-card">
           <h4>🎲 Визуализация результатов (последние 10 игр)</h4>
           <div class="match-visualization">
-            <div class="match-viz-row">
-              <span id="vizNameFav" class="player-name-viz"></span>
-              <span id="matchVizFav" class="dots-viz"></span>
-            </div>
-            <div class="match-viz-row">
-              <span id="vizNameUnd" class="player-name-viz"></span>
-              <span id="matchVizUnd" class="dots-viz"></span>
-            </div>
+            <div class="match-viz-row"><span id="vizNameFav" class="player-name-viz"></span><span id="matchVizFav" class="dots-viz"></span></div>
+            <div class="match-viz-row"><span id="vizNameUnd" class="player-name-viz"></span><span id="matchVizUnd" class="dots-viz"></span></div>
             <div id="h2hVizSection" class="match-viz-h2h" style="display:none;">
               <div class="h2h-title">Очные встречи:</div>
-              <div class="match-viz-row">
-                <span class="h2h-label">H2H результаты (<span id="h2hFavName"></span>):</span>
-                <span id="h2hViz" class="dots-viz"></span>
-              </div>
+              <div class="match-viz-row"><span class="h2h-label">H2H результаты (<span id="h2hFavName"></span>):</span><span id="h2hViz" class="dots-viz"></span></div>
             </div>
           </div>
-          <div class="legend">
-            <span class="legend-item">🟢 – победа</span>
-            <span class="legend-item">🔴 – поражение</span>
-          </div>
+          <div class="legend"><span class="legend-item">🟢 – победа</span><span class="legend-item">🔴 – поражение</span></div>
         </div>
-
-        <!-- БЛОК ГРАФИКА ФОРМЫ ВНУТРИ stats-grid ! -->
-        <div class="stats-card" id="player-form-section" style="margin-top: 28px;">
-          <h4>🟩 График формы игроков и прогноза</h4>
+        <div class="stats-card" id="player-form-section">
+          <h4>📈 График формы игроков</h4>
           <canvas id="formChart" width="340" height="200"></canvas>
         </div>
-        <!-- конец блока графика -->
       </div>
     </div>
   </div>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- ИЗМЕНЕНИЕ ЗДЕСЬ: подключаем локальный файл, а не CDN -->
+  <script src="chart.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>
