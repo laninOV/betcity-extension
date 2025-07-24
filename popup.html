@@ -47,8 +47,6 @@
       </table>
 
       <div class="stats-grid">
-
-        <!-- 📊 Статистика игрока -->
         <div class="stats-card">
           <h4>📊 Статистика игрока</h4>
           <table class="mini-table">
@@ -88,8 +86,6 @@
             </tbody>
           </table>
         </div>
-
-        <!-- 🎯 Победы в сетах -->
         <div class="stats-card">
           <h4>🎯 Победы в сетах</h4>
           <table class="mini-table">
@@ -110,8 +106,6 @@
             </tfoot>
           </table>
         </div>
-
-        <!-- 🎲 Визуализация результатов -->
         <div class="stats-card">
           <h4>🎲 Визуализация результатов (последние 10 игр)</h4>
           <div class="match-visualization">
@@ -137,9 +131,16 @@
           </div>
         </div>
 
+        <!-- БЛОК ГРАФИКА ФОРМЫ ВНУТРИ stats-grid ! -->
+        <div class="stats-card" id="player-form-section" style="margin-top: 28px;">
+          <h4>🟩 График формы игроков и прогноза</h4>
+          <canvas id="formChart" width="340" height="200"></canvas>
+        </div>
+        <!-- конец блока графика -->
       </div>
     </div>
   </div>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

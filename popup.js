@@ -3,6 +3,73 @@ document.addEventListener('DOMContentLoaded', () => {
   const loading = document.getElementById('loading');
   const error = document.getElementById('error');
   const results = document.getElementById('results');
+  let chartInstance = null;
+
+  // новая функция для отрисовки графика формы
+  function renderFormChart(d) {
+    setTimeout(() => {
+      if (!window.Chart) return;
+      const ctx = document.getElementById('formChart')?.getContext('2d');
+      if (!ctx || !d.formChartData) return;
+
+      if (chartInstance) chartInstance.destroy();
+
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: d.formChartData.labels,
+          datasets: [
+            {
+              label: d.playerA.name + ' Форма',
+              data: d.formChartData.playerA.form,
+              borderColor: 'rgba(54,162,235,1)',
+              backgroundColor: 'rgba(54,162,235,0.10)',
+              borderWidth: 2,
+              tension: 0.5,
+              spanGaps: true
+            },
+            {
+              label: d.playerA.name + ' Прогноз',
+              data: d.formChartData.playerA.prediction,
+              borderColor: 'rgba(54,162,235,1)',
+              borderWidth: 2,
+              borderDash: [8,4],
+              backgroundColor: 'rgba(0,0,0,0)',
+              pointRadius: 0,
+              tension: 0.5,
+              spanGaps: true
+            },
+            {
+              label: d.playerB.name + ' Форма',
+              data: d.formChartData.playerB.form,
+              borderColor: 'rgba(255,99,132,1)',
+              backgroundColor: 'rgba(255,99,132,0.10)',
+              borderWidth: 2,
+              tension: 0.5,
+              spanGaps: true
+            },
+            {
+              label: d.playerB.name + ' Прогноз',
+              data: d.formChartData.playerB.prediction,
+              borderColor: 'rgba(255,99,132,1)',
+              borderWidth: 2,
+              borderDash: [8,4],
+              backgroundColor: 'rgba(0,0,0,0)',
+              pointRadius: 0,
+              tension: 0.5,
+              spanGaps: true
+            }
+          ]
+        },
+        options: {
+          responsive: false,
+          plugins: { legend: { display: true, position: 'top' } },
+          scales:    { y: { beginAtZero: false } },
+          animation: false
+        }
+      });
+    }, 50); // Даем DOM "проявиться"
+  }
 
   analyzeBtn.addEventListener('click', () => {
     loading.classList.remove('hidden');
@@ -30,12 +97,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const d = response.data;
 
-        // Топ-инфо
         document.getElementById('confidenceIcon').textContent = d.confidence;
-        document.getElementById('confidenceText').textContent = ''; // Если есть текст, добавьте
+        document.getElementById('confidenceText').textContent = '';
         document.getElementById('favoriteText').textContent = d.favorite;
 
-        // Основная таблица
         document.getElementById('mainTableBody').innerHTML = `
           <tr>
             <td>${d.playerA.name}</td>
@@ -53,7 +118,6 @@ document.addEventListener('DOMContentLoaded', () => {
           </tr>
         `;
 
-        // Статистика игрока
         document.getElementById('statName1').textContent = d.playerA.name;
         document.getElementById('statName2').textContent = d.playerB.name;
         document.getElementById('s2Player1').textContent = d.playerA.s2;
@@ -67,7 +131,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('h2hDryLoss1').textContent = d.playerA.h2hDryLoss;
         document.getElementById('h2hDryLoss2').textContent = d.playerB.h2hDryLoss;
 
-        // Победы в сетах
         document.getElementById('p1Sets').textContent = d.playerA.name;
         document.getElementById('p2Sets').textContent = d.playerB.name;
         const setsTableBody = document.getElementById('setsTableBody');
@@ -88,14 +151,12 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('totalSets1').textContent = total1;
         document.getElementById('totalSets2').textContent = total2;
 
-        // Визуализация
         const isFavA = parseFloat(d.playerA.probability) > 50;
         document.getElementById('vizNameFav').textContent = isFavA ? d.playerA.name : d.playerB.name;
         document.getElementById('matchVizFav').textContent = isFavA ? d.playerA.visualization : d.playerB.visualization;
         document.getElementById('vizNameUnd').textContent = isFavA ? d.playerB.name : d.playerA.name;
         document.getElementById('matchVizUnd').textContent = isFavA ? d.playerB.visualization : d.playerA.visualization;
 
-        // H2H
         const h2hVizSection = document.getElementById('h2hVizSection');
         if (d.h2h.total > 0) {
           h2hVizSection.style.display = 'block';
@@ -104,6 +165,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
           h2hVizSection.style.display = 'none';
         }
+
+        // Теперь используем новую функцию для графика!
+        renderFormChart(d);
 
         results.classList.remove('hidden');
       });

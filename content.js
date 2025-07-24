@@ -18,11 +18,9 @@
     const sets1 = +s1, sets2 = +s2;
     let pairs = pts.split(",").map(p => p.trim().split(":").map(Number));
     const isHome = playersText.indexOf(header) < playersText.indexOf(" - ");
-    
     if (!isHome) {
       pairs = pairs.map(([a, b]) => [b, a]);
     }
-    
     const playerSets = isHome ? sets1 : sets2;
     const oppSets = isHome ? sets2 : sets1;
     const total1 = pairs.reduce((a, [x]) => a + x, 0);
@@ -174,34 +172,48 @@
     if (tables.length < 2) {
       return { success: false, error: "Insufficient data tables" };
     }
-
     const A = parseSection(tables[0]);
     const B = parseSection(tables[1]);
-    
     const gamesA = Array.isArray(A.games) ? A.games : [];
     const gamesB = Array.isArray(B.games) ? B.games : [];
-    
     if (!gamesA.length || !gamesB.length) {
       return { success: false, error: "No game data" };
     }
-
     let h2hData = parseH2H(A.player, B.player);
-
     const sA = strengthAdj(gamesA), sB = strengthAdj(gamesB);
     const vA = calcForaVariance(gamesA), vB = calcForaVariance(gamesB);
     const stA = calcStability(vA), stB = calcStability(vB);
-    
     let h2hAdj = 0;
     if (h2hData.total >= 3) {
       const h2hWins = h2hData.wA;
       const h2hRate = h2hWins / h2hData.total;
       h2hAdj = cfg.h2hK * (h2hRate - 0.5);
     }
-
     const diff = sA - sB + h2hAdj;
     const prob = 1 / (1 + Math.exp(-cfg.k * diff));
-    
-    // Структура данных для popup
+
+    function getFormMiArr(games, minLen = 7) {
+      const arr = games.slice(0, minLen).map(g => +g.Mi.toFixed(3));
+      while (arr.length < minLen) arr.unshift(null);
+      return arr.reverse();
+    }
+    function getPredictionArr(games, predLen = 3) {
+      const vals = games.slice(0, 3).map(g => g.Mi);
+      const lastVal = vals.length ? +(vals.reduce((a, b) => a + b) / vals.length).toFixed(3) : null;
+      return Array(predLen).fill(lastVal);
+    }
+    function buildLabels(minLen = 7, predLen = 3) {
+      const arr = [];
+      for (let i = minLen; i > 0; --i) arr.push('Игра -' + i);
+      for (let i = 1; i <= predLen; ++i) arr.push('Прогноз ' + i);
+      return arr;
+    }
+    const chartLabels = buildLabels(7, 3);
+    const formA = getFormMiArr(gamesA, 7).concat([null, null, null]);
+    const formB = getFormMiArr(gamesB, 7).concat([null, null, null]);
+    const predA = Array(7).fill(null).concat(getPredictionArr(gamesA, 3));
+    const predB = Array(7).fill(null).concat(getPredictionArr(gamesB, 3));
+
     return { success: true, data: {
       playerA: {
         name: A.player,
@@ -241,7 +253,18 @@
         dryUnd: prob > 0.5 ? h2hData.dryWinsB : h2hData.dryWinsA,
         visualization: prob > 0.5 ? createMatchVisualization(h2hData.h2hGames) : createMatchVisualization(h2hData.h2hGames.map(g => ({win: 1 - g.win}))),
       },
-      advice: getAdvice(prob, 1 - prob, vA, vB, (50 + 50 * sA), (50 + 50 * sB), h2hData)
+      advice: getAdvice(prob, 1 - prob, vA, vB, (50 + 50 * sA), (50 + 50 * sB), h2hData),
+      formChartData: {
+        labels: chartLabels,
+        playerA: {
+          form: formA,
+          prediction: predA
+        },
+        playerB: {
+          form: formB,
+          prediction: predB
+        }
+      }
     } };
   }
 
