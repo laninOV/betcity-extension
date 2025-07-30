@@ -13,44 +13,45 @@
 }
 
 body {
-  width: 90vw;             /* занимает 90% от ширины окна браузера */
-  max-width: 900px;        /* максимальная ширина — примерный лимит popup в Chrome */
-  min-width: 600px;        /* минимум для читабельности */
-  height: 90vh;
+  width: 900px !important;        /* Максимальная ширина для popup в Chrome */
+  max-width: 900px !important;    /* Жестко ограничиваем */
+  min-width: 900px !important;    /* Минимум тоже 900px */
+  height: 650px !important;       /* Фиксированная высота, чтобы поместилось все */
   margin: 0;
   padding: 0;
   box-sizing: border-box;
   background: linear-gradient(135deg, #4158d0 0%, #667eea 50%, #764ba2 100%);
   color: var(--text-main);
-  font-size: 15px;
+  font-size: 13px;                /* Уменьшил шрифт для компактности */
   font-family: 'Segoe UI', 'Roboto', 'Arial', sans-serif;
-  overflow-y: auto;
+  overflow: hidden;               /* Убираем прокрутку */
 }
 
 .container {
-  width: 100%; /* 100% внутри body */
-  min-height: 100%;
-  padding: 32px 36px 24px 36px;
+  width: 100%;
+  height: 100%;
+  padding: 16px 20px 12px 20px;  /* Уменьшил отступы */
   background: var(--blue-bg2);
-  border-radius: 22px;
+  border-radius: 16px;
   box-shadow: var(--main-shadow);
   box-sizing: border-box;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 header {
   text-align: left;
-  margin-bottom: 18px;
-  padding-bottom: 15px;
+  margin-bottom: 12px;            /* Уменьшил отступ */
+  padding-bottom: 10px;
   border-bottom: 1px solid #354062;
 }
 
 h1 {
   color: white;
-  font-size: 22px;
-  margin: 0 0 12px 0;
+  font-size: 18px;                /* Уменьшил размер заголовка */
+  margin: 0 0 8px 0;
   font-weight: bold;
   letter-spacing: 0.06em;
   text-shadow: 0 2px 12px #1a2347d0;
@@ -60,12 +61,12 @@ h1 {
   background: linear-gradient(90deg, #91b3fa 0%, #667eea 100%);
   color: #28233f;
   border: none;
-  border-radius: 18px;
-  padding: 10px 32px;
-  font-size: 16px;
+  border-radius: 16px;
+  padding: 8px 24px;              /* Уменьшил размер кнопки */
+  font-size: 14px;
   font-weight: 600;
-  margin-top: 4px;
-  margin-bottom: 12px;
+  margin-top: 2px;
+  margin-bottom: 8px;
   letter-spacing: 0.03em;
   cursor: pointer;
   box-shadow: 0 2px 8px #4453aa35;
@@ -79,18 +80,18 @@ h1 {
 
 .loading {
   text-align: center;
-  margin-top: 30px;
+  margin-top: 20px;
   color: #fff;
-  font-size: 18px;
+  font-size: 16px;
   opacity: .9;
 }
 
 .spinner {
-  margin: 0 auto 16px auto;
-  width: 38px;
-  height: 38px;
-  border: 4px solid rgba(255,255,255,.19);
-  border-top: 4px solid #91b3fa;
+  margin: 0 auto 12px auto;
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(255,255,255,.19);
+  border-top: 3px solid #91b3fa;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -102,68 +103,73 @@ h1 {
 .error {
   background: #73383c;
   color: #ffe3e3;
-  padding: 20px;
+  padding: 16px;
   border-radius: 8px;
   text-align: center;
   font-weight: 600;
-  margin-top: 18px;
+  margin-top: 12px;
   letter-spacing: .02em;
   user-select: none;
-  min-width: 280px;
+}
+
+.hidden {
+  display: none !important;
 }
 
 .results {
   flex: 1;
-  margin-top: 10px;
+  margin-top: 8px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  min-height: 200px;
+  gap: 12px;                      /* Уменьшил gap */
+  overflow-y: auto;               /* На всякий случай оставляем скролл */
+  max-height: calc(100% - 80px);  /* Ограничиваем высоту */
 }
 
 .top-info {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 16px;
-  margin: 0 0 16px 0;
+  gap: 12px;
+  margin: 0 0 10px 0;
 }
 
 .confidence, .favorite {
   background: #323768;
-  padding: 10px 20px;
-  border-radius: 13px;
+  padding: 6px 16px;              /* Уменьшил отступы */
+  border-radius: 10px;
   font-weight: 600;
   color: #fafbfc;
-  font-size: 16px;
+  font-size: 14px;
   box-shadow: 0 2px 10px #20286455;
   letter-spacing: 0.03em;
 }
 
-#confidenceIcon { font-size: 21px; color: #ffd600; }
-
+#confidenceIcon { 
+  font-size: 18px; 
+  color: #ffd600; 
+}
 
 .main-table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  margin-bottom: 14px;
-  margin-top: -2px;
+  margin-bottom: 10px;
   box-shadow: 0 2px 12px #22315c28;
-  border-radius: 14px;
+  border-radius: 12px;
   overflow: hidden;
-  font-size: 15px;
+  font-size: 13px;
   background: var(--card-bg);
 }
 
 .main-table th, .main-table td {
-  padding: 10px 14px;
+  padding: 6px 10px;              /* Уменьшил отступы */
   text-align: center;
 }
 
 .main-table th {
   background: var(--table-header);
-  font-size: 13px;
+  font-size: 11px;
   color: #f6faff;
   letter-spacing: .04em;
   text-transform: uppercase;
@@ -182,35 +188,46 @@ h1 {
 }
 
 .match-viz-h2h {
-  margin-bottom: 14px;
-  padding: 12px 20px;
+  margin-bottom: 10px;
+  padding: 8px 16px;              /* Уменьшил отступы */
   background: #333e67;
-  border-radius: 12px;
+  border-radius: 10px;
   color: #b0befc;
   box-shadow: 0 4px 18px #20318422;
 }
 
-.h2h-title { color: #cbdbf6; font-weight: 600; margin-bottom: 4px; font-size: 15px;}
-.h2h-label { margin-right: 7px; color: #bbc8fa; }
+.h2h-title { 
+  color: #cbdbf6; 
+  font-weight: 600; 
+  margin-bottom: 3px; 
+  font-size: 13px;
+}
+
+.h2h-label { 
+  margin-right: 6px; 
+  color: #bbc8fa; 
+  font-size: 12px;
+}
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(4, 1fr);  /* 4 колонки для широкого экрана */
+  gap: 12px;                              /* Уменьшил gap */
+  margin-bottom: 8px;
 }
 
 .stats-card {
   background: var(--card-bg);
   box-shadow: 0 2px 12px #191e3028;
-  padding: 20px 18px 20px 20px;
-  border-radius: 15px;
-  font-size: 15px;
+  padding: 12px 14px;             /* Уменьшил отступы */
+  border-radius: 12px;
+  font-size: 13px;
   color: #eaefff;
 }
 
-.stats-card h4 {
-  margin: 0 0 13px 0;
-  font-size: 17px;
+.stats-card h4, .stats-card h3 {
+  margin: 0 0 8px 0;              /* Уменьшил отступ */
+  font-size: 14px;                /* Уменьшил размер заголовков */
   color: #a3bfff;
   font-weight: 700;
   letter-spacing: .03em;
@@ -220,14 +237,14 @@ h1 {
 .mini-table {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 6px;
-  font-size: 14px;
+  margin-bottom: 4px;
+  font-size: 11px;                /* Уменьшил шрифт таблиц */
   color: #c6ccdf;
 }
 
 .mini-table th,
 .mini-table td {
-  padding: 6px 8px;
+  padding: 3px 6px;               /* Уменьшил отступы в таблицах */
   text-align: center;
   border-bottom: 1px solid #353a5c;
 }
@@ -235,7 +252,7 @@ h1 {
 .mini-table th {
   background: #273068;
   color: #cde0ff;
-  font-size: 13px;
+  font-size: 10px;
 }
 
 .mini-table tr:last-child td,
@@ -244,78 +261,65 @@ h1 {
 }
 
 .match-visualization {
-  padding: 10px 0;
+  padding: 6px 0;
 }
 
 .match-viz-row {
   display: flex;
   align-items: center;
-  margin-bottom: 7px;
+  margin-bottom: 4px;
 }
 
 .player-name-viz,
 .h2h-label {
-  width: 120px;
+  width: 100px;                   /* Уменьшил ширину */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: 13.5px;
+  font-size: 11px;                /* Уменьшил шрифт */
   color: #bacef5;
 }
 
 .dots-viz {
-  font-size: 18px;
-  letter-spacing: 5px;
+  font-size: 14px;                /* Уменьшил размер эмодзи */
+  letter-spacing: 3px;
   user-select: none;
   color: #fff;
 }
 
 .legend {
-  font-size: 13px;
+  font-size: 10px;                /* Уменьшил шрифт легенды */
   text-align: center;
-  margin-top: 8px;
+  margin-top: 6px;
   opacity: 0.76;
 }
 
 .legend-item {
-  margin-right: 15px;
+  margin-right: 12px;
   user-select: none;
 }
 
 #player-form-section {
   position: relative;
-  height: 230px;
-  padding: 12px 0 0 0;
+  height: 160px;                  /* Уменьшил высоту графика */
+  padding: 8px 0 0 0;
+}
+
+#formChart {
+  max-height: 140px !important;   /* Ограничиваем высоту графика */
 }
 
 .results::-webkit-scrollbar {
-  width: 7px;
+  width: 6px;
 }
 
 .results::-webkit-scrollbar-thumb {
   background: var(--scroll);
-  border-radius: 5px;
+  border-radius: 3px;
 }
 
 .results::-webkit-scrollbar-track {
   background: #2f3258;
 }
 
-@media (max-width: 1200px) {
-  body, .container {
-    min-width: 0;
-    width: 96vw;
-  }
-}
-
-@media (max-width: 900px) {
-  .container { padding: 14px 2vw; }
-  .stats-grid { grid-template-columns: 1fr; }
-  #analyzeBtn, .analyze-btn { width: 100%; }
-}
-
-@media (max-width: 700px) {
-  header { padding-bottom: 6px; }
-  h1 { font-size: 18px; }
-  .stats-card h4 { font-size: 14.5px; }
-}
+/* Убираем медиа-запросы для фиксированной ширины */

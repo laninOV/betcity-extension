@@ -32,9 +32,7 @@
       </div>
 
       <section aria-labelledby="mainStatsTitle" class="main-stats-block">
-        <h2 id="mainStatsTitle" class="visually-hidden">Основные показатели игроков</h2>
         <table class="main-table" aria-describedby="mainStatsDesc" role="table">
-          <caption id="mainStatsDesc">Основная статистика игроков: сила, вероятность победы, очные встречи и стабильность</caption>
           <thead>
             <tr>
               <th scope="col">Игрок</th>
@@ -49,7 +47,7 @@
       </section>
 
       <section id="h2hVizSection" class="match-viz-h2h hidden" aria-label="Визуализация очных встреч">
-        <h3 class="h2h-title">Очные встречи</h3>
+        <div class="h2h-title">Очные встречи</div>
         <div class="match-viz-row">
           <span class="h2h-label">H2H (<span id="h2hFavName"></span>):</span>
           <span id="h2hViz" class="dots-viz"></span>
@@ -58,9 +56,8 @@
 
       <div class="stats-grid">
         <section class="stats-card" aria-labelledby="statsTitle">
-          <h3 id="statsTitle">📊 Статистика игроков</h3>
+          <h3 id="statsTitle">📊 Статистика</h3>
           <table class="mini-table" aria-describedby="statsDesc">
-            <caption id="statsDesc">Показатели S₂, S₅, сухие победы и поражения, статистика по очным встречам</caption>
             <thead>
               <tr>
                 <th scope="col">Показатель</th>
@@ -73,7 +70,6 @@
               <tr><td>S₅</td><td id="s5Player1"></td><td id="s5Player2"></td></tr>
               <tr><td>Сухие победы</td><td id="dryWins1"></td><td id="dryWins2"></td></tr>
               <tr><td>Сухие поражения</td><td id="dryLosses1"></td><td id="dryLosses2"></td></tr>
-              <tr><td>H2H сухие пораж.</td><td id="h2hDryLoss1"></td><td id="h2hDryLoss2"></td></tr>
             </tbody>
           </table>
         </section>
@@ -81,7 +77,6 @@
         <section class="stats-card" aria-labelledby="setsTitle">
           <h3 id="setsTitle">🎯 Победы в сетах</h3>
           <table class="mini-table" aria-describedby="setsDesc">
-            <caption id="setsDesc">Количество выигранных и проигранных сетов по номерам</caption>
             <thead>
               <tr>
                 <th scope="col">Сет</th>
@@ -90,47 +85,24 @@
               </tr>
             </thead>
             <tbody id="setsTableBody"></tbody>
-            <tfoot>
-              <tr>
-                <td>Итого</td>
-                <td id="totalSets1"></td>
-                <td id="totalSets2"></td>
-              </tr>
-            </tfoot>
           </table>
         </section>
 
-        <section class="stats-card" aria-labelledby="tb35Title" style="background:#272e59;">
-          <h3 id="tb35Title" style="color:#a8b7ff;">
-            ⏳ ТБ <span style="color:#28a745;">3.5</span> по сетам 🎾
-          </h3>
-          <table class="mini-table" style="font-size:15px; color:#ccc;">
+        <section class="stats-card" aria-labelledby="tb35Title">
+          <h3 id="tb35Title" style="color:#a8b7ff;">⏳ ТБ 3.5 сетов</h3>
+          <table class="mini-table" style="font-size:11px; color:#ccc;">
             <thead>
               <tr>
-                <th scope="col" style="width:60%;">Исход</th>
+                <th scope="col">Исход</th>
                 <th scope="col">Вероятность</th>
               </tr>
             </thead>
             <tbody id="setsOver35Body"></tbody>
           </table>
-          <p id="setsOver35Explain" style="font-size:12px; margin-top:5px; color:#a0a8c0; text-align:left;"></p>
-        </section>
-
-        <section class="stats-card" aria-labelledby="setsCountTitle" style="background:#2c3461;">
-          <h3 id="setsCountTitle" style="color:#a8b7ff;">⏳ Вероятность количества сетов</h3>
-          <table class="mini-table" style="font-size:14px; color:#ccc;">
-            <thead>
-              <tr>
-                <th scope="col">Сетов в матче</th>
-                <th scope="col">Вероятность</th>
-              </tr>
-            </thead>
-            <tbody id="setsDistTableBody"></tbody>
-          </table>
         </section>
 
         <section class="stats-card" aria-labelledby="lastResultsTitle">
-          <h3 id="lastResultsTitle">🎲 Визуализация результатов</h3>
+          <h3 id="lastResultsTitle">🎲 Визуализация</h3>
           <div class="match-visualization">
             <div class="match-viz-row">
               <span id="vizNameFav" class="player-name-viz"></span>
@@ -142,18 +114,18 @@
             </div>
           </div>
           <div class="legend" aria-label="Легенда">
-            <span class="legend-item" style="color: var(--green);">🟢 – победа</span>
-            <span class="legend-item" style="color: var(--red);">🔴 – поражение</span>
+            <span class="legend-item">🟢 – победа</span>
+            <span class="legend-item">🔴 – поражение</span>
           </div>
         </section>
 
         <section class="stats-card" aria-labelledby="scoreProbsTitle">
-          <h3 id="scoreProbsTitle">🔮 Вероятности счетов (общие)</h3>
-          <table class="mini-table" aria-describedby="scoreProbsDesc" aria-label="Таблица вероятностей итоговых счетов">
-            <caption id="scoreProbsDesc">Вероятности различных итоговых счетов по классической модели</caption>
+          <h3 id="scoreProbsTitle">🔮 Счета (общие)</h3>
+          <table class="mini-table" aria-label="Таблица вероятностей итоговых счетов">
             <thead>
               <tr>
-                <th scope="col">Счет</th><th scope="col">Вероятность</th>
+                <th scope="col">Счет</th>
+                <th scope="col">Вероятность</th>
               </tr>
             </thead>
             <tbody id="scoreTableBody"></tbody>
@@ -161,23 +133,33 @@
         </section>
 
         <section class="stats-card" aria-labelledby="btProbsTitle">
-          <h3 id="btProbsTitle">🔢 Счет по Брэдли–Терри</h3>
-          <table class="mini-table" aria-describedby="btProbsDesc" aria-label="Таблица вероятностей итоговых счетов по модели Брэдли–Терри">
-            <caption id="btProbsDesc">Вероятности итоговых счетов, рассчитанные по модели Брэдли–Терри с весами сетов</caption>
+          <h3 id="btProbsTitle">🔢 Брэдли–Терри</h3>
+          <table class="mini-table" aria-label="Таблица вероятностей по модели Брэдли–Терри">
             <thead>
               <tr>
-                <th scope="col">Счет</th><th scope="col">Вероятность</th>
+                <th scope="col">Счет</th>
+                <th scope="col">Вероятность</th>
               </tr>
             </thead>
             <tbody id="btScoreTableBody"></tbody>
           </table>
-          <p style="font-size:12px; color:#a0a8c0;">
-            Используется сила на сете с учетом разницы очков (модель Брэдли–Терри)
-          </p>
         </section>
 
-        <section class="stats-card" id="player-form-section" aria-labelledby="formChartTitle" style="background:#272e59;">
-          <h3 id="formChartTitle" style="color:#a8b7ff;">📈 График формы игроков</h3>
+        <section class="stats-card" aria-labelledby="setsCountTitle">
+          <h3 id="setsCountTitle" style="color:#a8b7ff;">⏳ Количество сетов</h3>
+          <table class="mini-table" style="font-size:11px; color:#ccc;">
+            <thead>
+              <tr>
+                <th scope="col">Сетов</th>
+                <th scope="col">Вероятность</th>
+              </tr>
+            </thead>
+            <tbody id="setsDistTableBody"></tbody>
+          </table>
+        </section>
+
+        <section class="stats-card" id="player-form-section" aria-labelledby="formChartTitle">
+          <h3 id="formChartTitle" style="color:#a8b7ff;">📈 График формы</h3>
           <canvas id="formChart" role="img" aria-label="График формы игроков"></canvas>
         </section>
       </div>
