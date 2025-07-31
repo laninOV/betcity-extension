@@ -1,172 +1,395 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <title>Анализ теннисных матчей</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="popup.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tennis Prediction Analysis</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #333;
+      width: 600px;
+      min-height: 700px;
+      padding: 0;
+    }
+
+    .container {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 15px;
+      padding: 25px;
+      margin: 10px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 25px;
+      padding: 20px;
+      background: linear-gradient(135deg, #4CAF50, #45a049);
+      border-radius: 12px;
+      color: white;
+      box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+    }
+
+    .header h1 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .header p {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    .tabs {
+      display: flex;
+      margin-bottom: 20px;
+      background: #f5f5f5;
+      border-radius: 10px;
+      padding: 4px;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 12px;
+      text-align: center;
+      background: transparent;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 13px;
+      transition: all 0.3s ease;
+      color: #666;
+    }
+
+    .tab.active {
+      background: white;
+      color: #4CAF50;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .match-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding: 15px;
+      background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+      border-radius: 10px;
+      border-left: 4px solid #4CAF50;
+    }
+
+    .confidence {
+      font-size: 24px;
+      font-weight: bold;
+    }
+
+    .players-section {
+      display: grid;
+      grid-template-columns: 1fr 60px 1fr;
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+
+    .player {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+      border: 2px solid transparent;
+      transition: all 0.3s ease;
+    }
+
+    .player:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+    }
+
+    .player.favorite {
+      border-color: #4CAF50;
+      background: linear-gradient(135deg, #f8fff8, #ffffff);
+    }
+
+    .player-name {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      color: #2c3e50;
+    }
+
+    .player-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      font-size: 12px;
+    }
+
+    .stat {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 8px;
+      background: #f8f9fa;
+      border-radius: 6px;
+    }
+
+    .vs-section {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+
+    .vs-text {
+      font-size: 18px;
+      font-weight: bold;
+      color: #666;
+      margin-bottom: 5px;
+    }
+
+    .probability {
+      font-size: 14px;
+      font-weight: 600;
+      padding: 8px 12px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, #4CAF50, #45a049);
+      color: white;
+      box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+    }
+
+    .ensemble-section {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .ensemble-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .ensemble-value {
+      font-size: 32px;
+      font-weight: 800;
+      margin-bottom: 5px;
+    }
+
+    .ensemble-confidence {
+      font-size: 12px;
+      opacity: 0.9;
+    }
+
+    .methods-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .method-card {
+      background: white;
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      border-left: 3px solid;
+    }
+
+    .method-card.bradley-terry { border-left-color: #ff6b6b; }
+    .method-card.elo { border-left-color: #4ecdc4; }
+    .method-card.glicko { border-left-color: #45b7d1; }
+    .method-card.trueskill { border-left-color: #96ceb4; }
+    .method-card.bayesian { border-left-color: #ffeaa7; }
+    .method-card.logistic { border-left-color: #dda0dd; }
+    .method-card.markov { border-left-color: #98d8c8; }
+    .method-card.poisson { border-left-color: #f7dc6f; }
+
+    .method-header {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+      opacity: 0.7;
+    }
+
+    .method-probability {
+      font-size: 16px;
+      font-weight: 700;
+      color: #2c3e50;
+    }
+
+    .scores-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .score-item {
+      background: white;
+      border-radius: 8px;
+      padding: 12px;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      border: 1px solid #e9ecef;
+    }
+
+    .score-value {
+      font-size: 14px;
+      font-weight: 700;
+      color: #2c3e50;
+      margin-bottom: 4px;
+    }
+
+    .score-prob {
+      font-size: 12px;
+      color: #666;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 50px;
+      color: #666;
+    }
+
+    .error {
+      text-align: center;
+      padding: 30px;
+      color: #d32f2f;
+      background: #ffebee;
+      border-radius: 10px;
+      margin: 20px;
+    }
+
+    .visualization {
+      font-family: 'Courier New', monospace;
+      font-size: 16px;
+      letter-spacing: 2px;
+      margin: 8px 0;
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 15px;
+      color: #2c3e50;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-title::before {
+      content: '';
+      width: 4px;
+      height: 20px;
+      background: linear-gradient(135deg, #4CAF50, #45a049);
+      border-radius: 2px;
+    }
+  </style>
 </head>
 <body>
   <div class="container">
-    <header>
-      <h1>Анализ матчей</h1>
-      <button id="analyzeBtn" class="analyze-btn" aria-label="Запустить анализ">Анализировать</button>
-    </header>
-
-    <div id="loading" class="loading hidden" role="status" aria-live="polite">
-      <div class="spinner" aria-hidden="true"></div>
-      Анализируем...
+    <div class="header">
+      <h1>🏓 Tennis Prediction Analysis</h1>
+      <p>Комплексный анализ с 8 методами прогнозирования</p>
     </div>
 
-    <div id="error" class="error hidden" role="alert" aria-live="assertive"><p></p></div>
+    <div id="loading" class="loading">
+      <div>⏳ Анализ статистики...</div>
+    </div>
 
-    <main id="results" class="results hidden" tabindex="-1">
-      <div class="top-info">
-        <div class="confidence" aria-label="Уровень уверенности">
-          <span id="confidenceIcon" aria-hidden="true"></span> 
-          <span id="confidenceText"></span>
-        </div>
-        <div class="favorite" aria-label="Фаворит матча">
-          <strong>Фаворит:</strong> <span id="favoriteText"></span>
-        </div>
+    <div id="error" class="error" style="display: none;"></div>
+
+    <div id="content" style="display: none;">
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab active" data-tab="overview">Обзор</button>
+        <button class="tab" data-tab="methods">Методы</button>
+        <button class="tab" data-tab="details">Детали</button>
       </div>
 
-      <section aria-labelledby="mainStatsTitle" class="main-stats-block">
-        <table class="main-table" aria-describedby="mainStatsDesc" role="table">
-          <thead>
-            <tr>
-              <th scope="col">Игрок</th>
-              <th scope="col">S</th>
-              <th scope="col">Вероятность</th>
-              <th scope="col">H2H</th>
-              <th scope="col">Стаб.</th>
-            </tr>
-          </thead>
-          <tbody id="mainTableBody"></tbody>
-        </table>
-      </section>
-
-      <section id="h2hVizSection" class="match-viz-h2h hidden" aria-label="Визуализация очных встреч">
-        <div class="h2h-title">Очные встречи</div>
-        <div class="match-viz-row">
-          <span class="h2h-label">H2H (<span id="h2hFavName"></span>):</span>
-          <span id="h2hViz" class="dots-viz"></span>
+      <!-- Overview Tab -->
+      <div id="overview" class="tab-content active">
+        <div class="match-header">
+          <div>
+            <strong id="matchTitle"></strong>
+          </div>
+          <div class="confidence" id="confidence"></div>
         </div>
-      </section>
 
-      <div class="stats-grid">
-        <section class="stats-card" aria-labelledby="statsTitle">
-          <h3 id="statsTitle">📊 Статистика</h3>
-          <table class="mini-table" aria-describedby="statsDesc">
-            <thead>
-              <tr>
-                <th scope="col">Показатель</th>
-                <th scope="col" id="statName1"></th>
-                <th scope="col" id="statName2"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td>S₂</td><td id="s2Player1"></td><td id="s2Player2"></td></tr>
-              <tr><td>S₅</td><td id="s5Player1"></td><td id="s5Player2"></td></tr>
-              <tr><td>Сухие победы</td><td id="dryWins1"></td><td id="dryWins2"></td></tr>
-              <tr><td>Сухие поражения</td><td id="dryLosses1"></td><td id="dryLosses2"></td></tr>
-            </tbody>
-          </table>
-        </section>
-
-        <section class="stats-card" aria-labelledby="setsTitle">
-          <h3 id="setsTitle">🎯 Победы в сетах</h3>
-          <table class="mini-table" aria-describedby="setsDesc">
-            <thead>
-              <tr>
-                <th scope="col">Сет</th>
-                <th scope="col" id="p1Sets"></th>
-                <th scope="col" id="p2Sets"></th>
-              </tr>
-            </thead>
-            <tbody id="setsTableBody"></tbody>
-          </table>
-        </section>
-
-        <section class="stats-card" aria-labelledby="tb35Title">
-          <h3 id="tb35Title" style="color:#a8b7ff;">⏳ ТБ 3.5 сетов</h3>
-          <table class="mini-table" style="font-size:11px; color:#ccc;">
-            <thead>
-              <tr>
-                <th scope="col">Исход</th>
-                <th scope="col">Вероятность</th>
-              </tr>
-            </thead>
-            <tbody id="setsOver35Body"></tbody>
-          </table>
-        </section>
-
-        <section class="stats-card" aria-labelledby="lastResultsTitle">
-          <h3 id="lastResultsTitle">🎲 Визуализация</h3>
-          <div class="match-visualization">
-            <div class="match-viz-row">
-              <span id="vizNameFav" class="player-name-viz"></span>
-              <span id="matchVizFav" class="dots-viz"></span>
-            </div>
-            <div class="match-viz-row">
-              <span id="vizNameUnd" class="player-name-viz"></span>
-              <span id="matchVizUnd" class="dots-viz"></span>
-            </div>
+        <div class="players-section">
+          <div class="player" id="playerA">
+            <div class="player-name" id="playerAName"></div>
+            <div class="player-stats" id="playerAStats"></div>
+            <div class="visualization" id="playerAViz"></div>
           </div>
-          <div class="legend" aria-label="Легенда">
-            <span class="legend-item">🟢 – победа</span>
-            <span class="legend-item">🔴 – поражение</span>
+          
+          <div class="vs-section">
+            <div class="vs-text">VS</div>
+            <div class="probability" id="winProbability"></div>
           </div>
-        </section>
+          
+          <div class="player" id="playerB">
+            <div class="player-name" id="playerBName"></div>
+            <div class="player-stats" id="playerBStats"></div>
+            <div class="visualization" id="playerBViz"></div>
+          </div>
+        </div>
 
-        <section class="stats-card" aria-labelledby="scoreProbsTitle">
-          <h3 id="scoreProbsTitle">🔮 Счета (общие)</h3>
-          <table class="mini-table" aria-label="Таблица вероятностей итоговых счетов">
-            <thead>
-              <tr>
-                <th scope="col">Счет</th>
-                <th scope="col">Вероятность</th>
-              </tr>
-            </thead>
-            <tbody id="scoreTableBody"></tbody>
-          </table>
-        </section>
+        <!-- Ensemble Section -->
+        <div class="ensemble-section">
+          <div class="ensemble-title">🎯 Ансамблевое предсказание</div>
+          <div class="ensemble-value" id="ensembleValue">-</div>
+          <div class="ensemble-confidence" id="ensembleConfidence">-</div>
+        </div>
 
-        <section class="stats-card" aria-labelledby="btProbsTitle">
-          <h3 id="btProbsTitle">🔢 Брэдли–Терри</h3>
-          <table class="mini-table" aria-label="Таблица вероятностей по модели Брэдли–Терри">
-            <thead>
-              <tr>
-                <th scope="col">Счет</th>
-                <th scope="col">Вероятность</th>
-              </tr>
-            </thead>
-            <tbody id="btScoreTableBody"></tbody>
-          </table>
-        </section>
-
-        <section class="stats-card" aria-labelledby="setsCountTitle">
-          <h3 id="setsCountTitle" style="color:#a8b7ff;">⏳ Количество сетов</h3>
-          <table class="mini-table" style="font-size:11px; color:#ccc;">
-            <thead>
-              <tr>
-                <th scope="col">Сетов</th>
-                <th scope="col">Вероятность</th>
-              </tr>
-            </thead>
-            <tbody id="setsDistTableBody"></tbody>
-          </table>
-        </section>
-
-        <section class="stats-card" id="player-form-section" aria-labelledby="formChartTitle">
-          <h3 id="formChartTitle" style="color:#a8b7ff;">📈 График формы</h3>
-          <canvas id="formChart" role="img" aria-label="График формы игроков"></canvas>
-        </section>
+        <!-- Predicted Scores -->
+        <div class="section-title">🎯 Наиболее вероятные счета</div>
+        <div class="scores-grid" id="predictedScores"></div>
       </div>
-    </main>
+
+      <!-- Methods Tab -->
+      <div id="methods" class="tab-content">
+        <div class="section-title">🔬 Сравнение методов прогнозирования</div>
+        <div class="methods-grid" id="methodsGrid"></div>
+      </div>
+
+      <!-- Details Tab -->
+      <div id="details" class="tab-content">
+        <div class="section-title">📊 Детальная информация</div>
+        <div id="detailsContent"></div>
+      </div>
+    </div>
   </div>
 
-  <script src="chart.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>
