@@ -8,162 +8,163 @@
 </head>
 <body>
   <div class="container">
-    <header>
-      <h1>Анализ матчей</h1>
-      <button id="analyzeBtn" class="analyze-btn" aria-label="Запустить анализ">Анализировать</button>
-    </header>
 
-    <div id="loading" class="loading hidden" role="status" aria-live="polite">
-      <div class="spinner" aria-hidden="true"></div>
+    <div id="loading" class="loading hidden">
+      <div class="spinner"></div>
       Анализируем...
     </div>
 
-    <div id="error" class="error hidden" role="alert" aria-live="assertive"><p></p></div>
+    <div id="error" class="error hidden"><p></p></div>
 
-    <main id="results" class="results hidden" tabindex="-1">
-      <div class="top-info">
-        <div class="confidence" aria-label="Уровень уверенности">
-          <span id="confidenceIcon" aria-hidden="true"></span> 
-          <span id="confidenceText"></span>
-        </div>
-        <div class="favorite" aria-label="Фаворит матча">
-          <strong>Фаворит:</strong> <span id="favoriteText"></span>
-        </div>
-      </div>
+    <div id="recommendationBlock" style="
+      padding: 4px 8px;
+      background: linear-gradient(135deg, #31489e 0%, #152951 100%);
+      border-radius: 6px;
+      margin: 4px 8px 6px 8px;
+      color: #eaefff;
+      font-weight: 600;
+      font-size: 11px;
+      user-select: text;
+      box-shadow: none;
+      line-height: 1.2;
+    "></div>
 
-      <section aria-labelledby="mainStatsTitle" class="main-stats-block">
-        <table class="main-table" aria-describedby="mainStatsDesc" role="table">
-          <thead>
-            <tr>
-              <th scope="col">Игрок</th>
-              <th scope="col">S</th>
-              <th scope="col">Вероятность</th>
-              <th scope="col">H2H</th>
-              <th scope="col">Стаб.</th>
-            </tr>
-          </thead>
-          <tbody id="mainTableBody"></tbody>
+    <!-- Топ-3 вероятных счетов в две колонки -->
+    <div id="topScoresWrapper" style="display: flex; gap: 12px; margin: 0 12px 6px 12px;">
+      <section class="stats-card" style="flex:1;">
+        <h3 style="margin:0 0 3px;">🏆 Топ 3 счета (Общее)</h3>
+        <table class="mini-table" aria-label="Топ 3 наиболее вероятных счета - Общие">
+          <thead><tr><th>Счет</th><th>Вероятность</th></tr></thead>
+          <tbody id="topGeneralScoresBody"></tbody>
         </table>
       </section>
+      <section class="stats-card" style="flex:1;">
+        <h3 style="margin:0 0 3px;">🏆 Топ 3 счета (Брэдли–Терри)</h3>
+        <table class="mini-table" aria-label="Топ 3 наиболее вероятных счета - Брэдли–Терри">
+          <thead><tr><th>Счет</th><th>Вероятность</th></tr></thead>
+          <tbody id="topBTScoresBody"></tbody>
+        </table>
+      </section>
+    </div>
 
-      <section id="h2hVizSection" class="match-viz-h2h hidden" aria-label="Визуализация очных встреч">
-        <div class="h2h-title">Очные встречи</div>
-        <div class="match-viz-row">
-          <span class="h2h-label">H2H (<span id="h2hFavName"></span>):</span>
-          <span id="h2hViz" class="dots-viz"></span>
+    <!-- Краткая основная статистика игроков с центрированием -->
+    <div id="mainQuickStats" class="stats-card" style="margin: 0 12px 6px 12px; padding:8px;">
+      <table style="width:100%; font-size:12px; border-collapse: collapse; text-align: center;">
+        <thead>
+          <tr>
+            <th style="width: 35%;">Игрок</th>
+            <th style="width: 15%;">S</th>
+            <th style="width: 15%;">Вероятность</th>
+            <th style="width: 20%;">H2H</th>
+            <th style="width: 15%;">Стабильность</th>
+          </tr>
+        </thead>
+        <tbody id="mainTableBody"></tbody>
+      </table>
+    </div>
+
+    <!-- Статистика игроков и КУ на одном уровне -->
+    <div style="display: flex; gap: 12px; margin: 0 12px 6px 12px;">
+      <section class="stats-card" style="flex:1;">
+        <h3 style="margin:0 0 3px;">📊 Статистика игроков</h3>
+        <table class="mini-table" aria-describedby="statsDesc">
+          <thead>
+            <tr>
+              <th>Показатель</th>
+              <th id="statName1">Игрок 1</th>
+              <th id="statName2">Игрок 2</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>S₂</td><td id="s2Player1">-</td><td id="s2Player2">-</td></tr>
+            <tr><td>S₅</td><td id="s5Player1">-</td><td id="s5Player2">-</td></tr>
+            <tr><td>Сухие победы</td><td id="dryWins1">-</td><td id="dryWins2">-</td></tr>
+            <tr><td>Сухие поражения</td><td id="dryLosses1">-</td><td id="dryLosses2">-</td></tr>
+          </tbody>
+        </table>
+      </section>
+      <section class="stats-card" style="flex:1;">
+        <h3 style="margin:0 0 3px;">💪 КУ_ТБ3.5_очки</h3>
+        <table class="mini-table" aria-describedby="kuTbDesc">
+          <thead>
+            <tr>
+              <th>Игрок</th>
+              <th>КУ</th>
+              <th>Рекомендация</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td id="kuTbPlayerA">-</td>
+              <td id="kuTbValueA">-</td>
+              <td id="kuTbRecA">-</td>
+            </tr>
+            <tr>
+              <td id="kuTbPlayerB">-</td>
+              <td id="kuTbValueB">-</td>
+              <td id="kuTbRecB">-</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </div>
+
+    <!-- Визуализация и победы в сетах на одном уровне -->
+    <div style="display: flex; gap: 12px; margin: 0 12px 8px 12px;">
+      <section class="stats-card" style="flex:1;">
+        <h3 style="margin:0 0 3px;">🎲 Визуализация результатов</h3>
+        <div class="match-visualization" aria-label="Визуализация последних результатов игроков">
+          <div class="match-viz-row">
+            <span id="vizNameFav" class="player-name-viz"></span>
+            <span id="matchVizFav" class="dots-viz" aria-hidden="true"></span>
+          </div>
+          <div class="match-viz-row">
+            <span id="vizNameUnd" class="player-name-viz"></span>
+            <span id="matchVizUnd" class="dots-viz" aria-hidden="true"></span>
+          </div>
+          <div class="match-viz-row" id="h2hVizRow" style="display:none;">
+            <span class="player-name-viz">H2H:</span>
+            <span id="h2hVizInline" class="dots-viz"></span>
+          </div>
+        </div>
+        <div class="legend" aria-label="Легенда">
+          <span class="legend-item">🟢 – победа</span>
+          <span class="legend-item">🔴 – поражение</span>
         </div>
       </section>
+      <section class="stats-card" style="flex:1;">
+        <h3 style="margin:0 0 3px;">🎯 Победы в сетах</h3>
+        <table class="mini-table">
+          <thead>
+            <tr><th>Сет</th><th id="p1Sets">Игрок 1</th><th id="p2Sets">Игрок 2</th></tr>
+          </thead>
+          <tbody id="setsTableBody"></tbody>
+        </table>
+      </section>
+    </div>
 
-      <div class="stats-grid">
-        <section class="stats-card" aria-labelledby="statsTitle">
-          <h3 id="statsTitle">📊 Статистика</h3>
-          <table class="mini-table" aria-describedby="statsDesc">
-            <thead>
-              <tr>
-                <th scope="col">Показатель</th>
-                <th scope="col" id="statName1"></th>
-                <th scope="col" id="statName2"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td>S₂</td><td id="s2Player1"></td><td id="s2Player2"></td></tr>
-              <tr><td>S₅</td><td id="s5Player1"></td><td id="s5Player2"></td></tr>
-              <tr><td>Сухие победы</td><td id="dryWins1"></td><td id="dryWins2"></td></tr>
-              <tr><td>Сухие поражения</td><td id="dryLosses1"></td><td id="dryLosses2"></td></tr>
-            </tbody>
-          </table>
-        </section>
+    <!-- Подробные таблицы внизу -->
+    <div class="stats-grid" style="margin: 0 12px 12px 12px;">
+      <section class="stats-card">
+        <h3 id="scoreProbsTitle" style="margin: 0 0 6px 0;">🔮 Счета (общие, подробно)</h3>
+        <table class="mini-table" aria-label="Таблица вероятностей итоговых счетов">
+          <thead>
+            <tr><th>Счет</th><th>Вероятность</th></tr>
+          </thead>
+          <tbody id="scoreTableBody"></tbody>
+        </table>
+      </section>
+      <section class="stats-card">
+        <h3 id="btProbsTitle" style="margin: 0 0 6px 0;">🔢 Брэдли–Терри (подробно)</h3>
+        <table class="mini-table" aria-label="Таблица вероятностей по модели Брэдли–Терри">
+          <thead>
+            <tr><th>Счет</th><th>Вероятность</th></tr>
+          </thead>
+          <tbody id="btScoreTableBody"></tbody>
+        </table>
+      </section>
+    </div>
 
-        <section class="stats-card" aria-labelledby="setsTitle">
-          <h3 id="setsTitle">🎯 Победы в сетах</h3>
-          <table class="mini-table" aria-describedby="setsDesc">
-            <thead>
-              <tr>
-                <th scope="col">Сет</th>
-                <th scope="col" id="p1Sets"></th>
-                <th scope="col" id="p2Sets"></th>
-              </tr>
-            </thead>
-            <tbody id="setsTableBody"></tbody>
-          </table>
-        </section>
-
-        <section class="stats-card" aria-labelledby="tb35Title">
-          <h3 id="tb35Title" style="color:#a8b7ff;">⏳ ТБ 3.5 сетов</h3>
-          <table class="mini-table" style="font-size:11px; color:#ccc;">
-            <thead>
-              <tr>
-                <th scope="col">Исход</th>
-                <th scope="col">Вероятность</th>
-              </tr>
-            </thead>
-            <tbody id="setsOver35Body"></tbody>
-          </table>
-        </section>
-
-        <section class="stats-card" aria-labelledby="lastResultsTitle">
-          <h3 id="lastResultsTitle">🎲 Визуализация</h3>
-          <div class="match-visualization">
-            <div class="match-viz-row">
-              <span id="vizNameFav" class="player-name-viz"></span>
-              <span id="matchVizFav" class="dots-viz"></span>
-            </div>
-            <div class="match-viz-row">
-              <span id="vizNameUnd" class="player-name-viz"></span>
-              <span id="matchVizUnd" class="dots-viz"></span>
-            </div>
-          </div>
-          <div class="legend" aria-label="Легенда">
-            <span class="legend-item">🟢 – победа</span>
-            <span class="legend-item">🔴 – поражение</span>
-          </div>
-        </section>
-
-        <section class="stats-card" aria-labelledby="scoreProbsTitle">
-          <h3 id="scoreProbsTitle">🔮 Счета (общие)</h3>
-          <table class="mini-table" aria-label="Таблица вероятностей итоговых счетов">
-            <thead>
-              <tr>
-                <th scope="col">Счет</th>
-                <th scope="col">Вероятность</th>
-              </tr>
-            </thead>
-            <tbody id="scoreTableBody"></tbody>
-          </table>
-        </section>
-
-        <section class="stats-card" aria-labelledby="btProbsTitle">
-          <h3 id="btProbsTitle">🔢 Брэдли–Терри</h3>
-          <table class="mini-table" aria-label="Таблица вероятностей по модели Брэдли–Терри">
-            <thead>
-              <tr>
-                <th scope="col">Счет</th>
-                <th scope="col">Вероятность</th>
-              </tr>
-            </thead>
-            <tbody id="btScoreTableBody"></tbody>
-          </table>
-        </section>
-
-        <section class="stats-card" aria-labelledby="setsCountTitle">
-          <h3 id="setsCountTitle" style="color:#a8b7ff;">⏳ Количество сетов</h3>
-          <table class="mini-table" style="font-size:11px; color:#ccc;">
-            <thead>
-              <tr>
-                <th scope="col">Сетов</th>
-                <th scope="col">Вероятность</th>
-              </tr>
-            </thead>
-            <tbody id="setsDistTableBody"></tbody>
-          </table>
-        </section>
-
-        <section class="stats-card" id="player-form-section" aria-labelledby="formChartTitle">
-          <h3 id="formChartTitle" style="color:#a8b7ff;">📈 График формы</h3>
-          <canvas id="formChart" role="img" aria-label="График формы игроков"></canvas>
-        </section>
-      </div>
-    </main>
   </div>
 
   <script src="chart.js"></script>

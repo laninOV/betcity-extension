@@ -3,7 +3,6 @@
   --red: #e03a3a;
   --yellow: #ffd600;
   --blue-bg: #2f3355;
-  --blue-bg2: #21243a;
   --main-shadow: 0 4px 24px rgba(43, 53, 130, 0.12);
   --card-bg: rgba(37, 42, 75, 0.97);
   --table-header: #4355a7;
@@ -13,81 +12,68 @@
 }
 
 body {
-  width: 900px !important;        /* Максимальная ширина для popup в Chrome */
-  max-width: 900px !important;    /* Жестко ограничиваем */
-  min-width: 900px !important;    /* Минимум тоже 900px */
-  height: 650px !important;       /* Фиксированная высота, чтобы поместилось все */
+  width: 780px !important;          /* УМЕНЬШИЛ ширину */
   margin: 0;
   padding: 0;
   box-sizing: border-box;
   background: linear-gradient(135deg, #4158d0 0%, #667eea 50%, #764ba2 100%);
+  background-size: cover;
   color: var(--text-main);
-  font-size: 13px;                /* Уменьшил шрифт для компактности */
+  font-size: 13px;
   font-family: 'Segoe UI', 'Roboto', 'Arial', sans-serif;
-  overflow: hidden;               /* Убираем прокрутку */
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .container {
   width: 100%;
-  height: 100%;
-  padding: 16px 20px 12px 20px;  /* Уменьшил отступы */
+  min-height: 100%;
   background: var(--blue-bg2);
   border-radius: 16px;
   box-shadow: var(--main-shadow);
   box-sizing: border-box;
-  margin: 0 auto;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 
 header {
-  text-align: left;
-  margin-bottom: 12px;            /* Уменьшил отступ */
-  padding-bottom: 10px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
   border-bottom: 1px solid #354062;
 }
 
 h1 {
   color: white;
-  font-size: 18px;                /* Уменьшил размер заголовка */
+  font-size: 18px;
   margin: 0 0 8px 0;
   font-weight: bold;
-  letter-spacing: 0.06em;
-  text-shadow: 0 2px 12px #1a2347d0;
 }
 
-#analyzeBtn, .analyze-btn {
+#analyzeBtn {
   background: linear-gradient(90deg, #91b3fa 0%, #667eea 100%);
   color: #28233f;
   border: none;
-  border-radius: 16px;
-  padding: 8px 24px;              /* Уменьшил размер кнопки */
-  font-size: 14px;
+  border-radius: 12px;
+  padding: 8px 20px;
+  font-size: 13px;
   font-weight: 600;
-  margin-top: 2px;
-  margin-bottom: 8px;
-  letter-spacing: 0.03em;
   cursor: pointer;
-  box-shadow: 0 2px 8px #4453aa35;
-  transition: background .2s, box-shadow .2s;
+  transition: background .2s;
 }
 
-#analyzeBtn:hover, .analyze-btn:hover {
+#analyzeBtn:hover {
   background: linear-gradient(90deg, #c8e0fc 0%, #b9b0fd 100%);
-  color: #324465;
 }
 
 .loading {
   text-align: center;
-  margin-top: 20px;
+  margin-top: 30px;
   color: #fff;
   font-size: 16px;
-  opacity: .9;
 }
 
 .spinner {
-  margin: 0 auto 12px auto;
+  margin: 0 auto 16px auto;
   width: 32px;
   height: 32px;
   border: 3px solid rgba(255,255,255,.19);
@@ -103,50 +89,41 @@ h1 {
 .error {
   background: #73383c;
   color: #ffe3e3;
-  padding: 16px;
+  padding: 12px;
   border-radius: 8px;
   text-align: center;
   font-weight: 600;
   margin-top: 12px;
-  letter-spacing: .02em;
-  user-select: none;
 }
 
 .hidden {
-  display: none !important;
+  display: none;
 }
 
 .results {
-  flex: 1;
   margin-top: 8px;
   display: flex;
   flex-direction: column;
-  gap: 12px;                      /* Уменьшил gap */
-  overflow-y: auto;               /* На всякий случай оставляем скролл */
-  max-height: calc(100% - 80px);  /* Ограничиваем высоту */
+  gap: 12px;
 }
 
 .top-info {
   display: flex;
   justify-content: space-between;
-  align-items: center;
   gap: 12px;
-  margin: 0 0 10px 0;
 }
 
 .confidence, .favorite {
   background: #323768;
-  padding: 6px 16px;              /* Уменьшил отступы */
-  border-radius: 10px;
+  padding: 8px 16px;
+  border-radius: 8px;
   font-weight: 600;
   color: #fafbfc;
-  font-size: 14px;
-  box-shadow: 0 2px 10px #20286455;
-  letter-spacing: 0.03em;
+  font-size: 13px;
 }
 
 #confidenceIcon { 
-  font-size: 18px; 
+  font-size: 16px; 
   color: #ffd600; 
 }
 
@@ -154,7 +131,6 @@ h1 {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  margin-bottom: 10px;
   box-shadow: 0 2px 12px #22315c28;
   border-radius: 12px;
   overflow: hidden;
@@ -163,15 +139,14 @@ h1 {
 }
 
 .main-table th, .main-table td {
-  padding: 6px 10px;              /* Уменьшил отступы */
+  padding: 10px 6px;               /* УМЕНЬШИЛ отступы */
   text-align: center;
 }
 
 .main-table th {
   background: var(--table-header);
-  font-size: 11px;
+  font-size: 12px;
   color: #f6faff;
-  letter-spacing: .04em;
   text-transform: uppercase;
 }
 
@@ -188,63 +163,51 @@ h1 {
 }
 
 .match-viz-h2h {
-  margin-bottom: 10px;
-  padding: 8px 16px;              /* Уменьшил отступы */
+  padding: 12px;
   background: #333e67;
-  border-radius: 10px;
+  border-radius: 12px;
   color: #b0befc;
-  box-shadow: 0 4px 18px #20318422;
 }
 
 .h2h-title { 
   color: #cbdbf6; 
   font-weight: 600; 
-  margin-bottom: 3px; 
+  margin-bottom: 6px; 
   font-size: 13px;
-}
-
-.h2h-label { 
-  margin-right: 6px; 
-  color: #bbc8fa; 
-  font-size: 12px;
 }
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);  /* 4 колонки для широкого экрана */
-  gap: 12px;                              /* Уменьшил gap */
-  margin-bottom: 8px;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
 }
 
 .stats-card {
   background: var(--card-bg);
   box-shadow: 0 2px 12px #191e3028;
-  padding: 12px 14px;             /* Уменьшил отступы */
+  padding: 12px;
   border-radius: 12px;
   font-size: 13px;
   color: #eaefff;
 }
 
-.stats-card h4, .stats-card h3 {
-  margin: 0 0 8px 0;              /* Уменьшил отступ */
-  font-size: 14px;                /* Уменьшил размер заголовков */
+.stats-card h3 {
+  margin: 0 0 12px 0;
+  font-size: 13px;
   color: #a3bfff;
   font-weight: 700;
-  letter-spacing: .03em;
-  user-select: none;
 }
 
 .mini-table {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 4px;
-  font-size: 11px;                /* Уменьшил шрифт таблиц */
+  font-size: 13px;
   color: #c6ccdf;
 }
 
 .mini-table th,
 .mini-table td {
-  padding: 3px 6px;               /* Уменьшил отступы в таблицах */
+  padding: 6px 3px;                /* УМЕНЬШИЛ отступы */
   text-align: center;
   border-bottom: 1px solid #353a5c;
 }
@@ -252,7 +215,7 @@ h1 {
 .mini-table th {
   background: #273068;
   color: #cde0ff;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .mini-table tr:last-child td,
@@ -261,65 +224,81 @@ h1 {
 }
 
 .match-visualization {
-  padding: 6px 0;
+  padding: 8px 0;
 }
 
 .match-viz-row {
   display: flex;
   align-items: center;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
-.player-name-viz,
-.h2h-label {
-  width: 100px;                   /* Уменьшил ширину */
-  white-space: nowrap;
+.player-name-viz {
+  width: 90px;                     /* УМЕНЬШИЛ ширину */
+  font-size: 12px;
+  color: #bacef5;
+  margin-right: 6px;               /* УМЕНЬШИЛ отступ */
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: 11px;                /* Уменьшил шрифт */
-  color: #bacef5;
+  white-space: nowrap;
 }
 
 .dots-viz {
-  font-size: 14px;                /* Уменьшил размер эмодзи */
-  letter-spacing: 3px;
-  user-select: none;
+  font-size: 13px;                 /* УМЕНЬШИЛ размер */
+  letter-spacing: 1px;             /* УМЕНЬШИЛ расстояние */
   color: #fff;
 }
 
 .legend {
-  font-size: 10px;                /* Уменьшил шрифт легенды */
+  font-size: 11px;
   text-align: center;
-  margin-top: 6px;
-  opacity: 0.76;
+  margin-top: 8px;
+  opacity: 0.8;
 }
 
 .legend-item {
-  margin-right: 12px;
-  user-select: none;
+  margin-right: 10px;              /* УМЕНЬШИЛ отступ */
 }
 
-#player-form-section {
-  position: relative;
-  height: 160px;                  /* Уменьшил высоту графика */
-  padding: 8px 0 0 0;
+.compact-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-#formChart {
-  max-height: 140px !important;   /* Ограничиваем высоту графика */
+.compact-stats .stat-section {
+  background: rgba(0,0,0,0.2);
+  padding: 8px;
+  border-radius: 8px;
 }
 
-.results::-webkit-scrollbar {
-  width: 6px;
+.compact-stats .stat-section h4 {
+  margin: 0 0 6px 0;
+  font-size: 14px;
+  color: #ffffff;
+  font-weight: 600;
 }
 
-.results::-webkit-scrollbar-thumb {
-  background: var(--scroll);
-  border-radius: 3px;
+.compact-stats .stat-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 3px;
+  font-size: 12px;
 }
 
-.results::-webkit-scrollbar-track {
-  background: #2f3258;
+.compact-stats .stat-label {
+  color: #bac9e8;
 }
 
-/* Убираем медиа-запросы для фиксированной ширины */
+.compact-stats .stat-value {
+  color: #eaefff;
+  font-weight: 600;
+}
+
+.sets-section {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 12px;
+}
