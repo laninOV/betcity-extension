@@ -19,7 +19,6 @@
       t.querySelector("tr:first-child td")?.textContent.includes("Очные встречи")
     );
     if (!tbl) return { wA: 0, wB: 0, total: 0, dryWinsA: 0, dryWinsB: 0, h2hGames: [] };
-
     let wA = 0, wB = 0, dryA = 0, dryB = 0;
     const h2hGames = [];
     Array.from(tbl.querySelectorAll("tr")).slice(2).forEach(r => {
@@ -29,24 +28,23 @@
       if (!playersTxt || !score || !dateTxt) return;
       const m = score.match(/^(\d+):(\d+)/);
       if (!m) return;
+      const rawScore = score.match(/\(([^)]+)\)/)?.[1] || '';
       const [d, mth, y] = dateTxt.split(".").map(Number);
       const dt = new Date(2000 + y, mth - 1, d);
       const home = playersTxt.startsWith(playerA);
       const [s1, s2] = [+m[1], +m[2]];
       const aWon = (home && s1 > s2) || (!home && s2 > s1);
       if (aWon) {
-        wA++;
-        if ((home && s2 === 0) || (!home && s1 === 0)) dryA++;
+        wA++; if ((home && s2 === 0) || (!home && s1 === 0)) dryA++;
       } else {
-        wB++;
-        if ((home && s1 === 0) || (!home && s2 === 0)) dryB++;
+        wB++; if ((home && s1 === 0) || (!home && s2 === 0)) dryB++;
       }
-      h2hGames.push({ win: aWon ? 1 : 0, date: dt, pts: null });
+      h2hGames.push({ win: aWon ? 1 : 0, date: dt, rawScore });
     });
     return { wA, wB, total: wA + wB, h2hGames, dryWinsA: dryA, dryWinsB: dryB };
   }
 
-  // --- Коэффициент очкового преимущества по личным встречам (весовой) ---
+  // --- Коэффициент очкового преимущества по личным встречам ---
   function calcRh2h(player, opponent) {
     const tbl = [...document.querySelectorAll("table")].find(t =>
       t.querySelector("tr:first-child td")?.textContent.includes("Очные встречи")
@@ -79,8 +77,7 @@
   // --- Старая формула коэффициента упорства (для совместимости) ---
   function calculatePersistenceCoefficient(matchScores) {
     if (!matchScores || !matchScores.length) return 0;
-    let matchRatios = [];
-    let matchWins = [];
+    let matchRatios = [], matchWins = [];
     for (const match of matchScores) {
       const sets = match.match(/(\d+):(\d+)/g)?.map(s => s.split(':').map(Number)) || [];
       if (!sets.length) continue;
@@ -92,11 +89,11 @@
         if (p1 > p2) wonSet = true;
       }
       if (!ratios.length) continue;
-      matchRatios.push(ratios.reduce((a,b) => a+b, 0) / ratios.length);
+      matchRatios.push(ratios.reduce((a, b) => a + b, 0) / ratios.length);
       matchWins.push(wonSet);
     }
     if (!matchRatios.length) return 0;
-    const avgRatio = matchRatios.reduce((a,b) => a+b, 0) / matchRatios.length;
+    const avgRatio = matchRatios.reduce((a, b) => a + b, 0) / matchRatios.length;
     const winRate = matchWins.filter(v => v).length / matchWins.length;
     return +(avgRatio * winRate).toFixed(4);
   }
@@ -104,22 +101,17 @@
   // --- Новая модернизированная формула коэффициента упорства ---
   function calculatePersistenceMod(matchScoresList, bigLossThreshold = 0.4) {
     if (!Array.isArray(matchScoresList) || !matchScoresList.length) return 0;
-
     function parseSetScores(scoreStr) {
       const matches = scoreStr.match(/(\d+):(\d+)/g);
       if (!matches) return [];
       return matches.map(pair => pair.split(':').map(Number));
     }
-
     const allMatchCoefficients = [];
-
     for (const scoreStr of matchScoresList) {
       const sets = parseSetScores(scoreStr);
       const n = sets.length;
       if (!n) continue;
-
       let pointsRatios = [], setsWon = 0, bigLosses = 0;
-
       for (const [playerPoints, oppPoints] of sets) {
         const totalPoints = playerPoints + oppPoints;
         let ratio = totalPoints ? playerPoints / totalPoints : 0;
@@ -131,13 +123,24 @@
       const w = setsWon / n;
       const s = bigLosses / n;
       const l = n >= 4 ? 1.0 : 0.7;
-
       const matchCoef = avgPointsRatio * w * (1 - s) * l;
       allMatchCoefficients.push(matchCoef);
     }
     if (!allMatchCoefficients.length) return 0;
-
     return +(allMatchCoefficients.reduce((a, b) => a + b, 0) / allMatchCoefficients.length).toFixed(4);
+  }
+
+  // --- Доминирование (доля побед 3:0) ---
+  function calculateDominance(matchResults) {
+    if (!Array.isArray(matchResults) || matchResults.length === 0) return 0;
+    const total = matchResults.length;
+    const count_3_0 = matchResults.filter(score => score.startsWith('3:0')).length;
+    return +(count_3_0 / total).toFixed(4);
+  }
+
+  // --- Итоговый комбинированный индекс ---
+  function combinedIndex(persistenceMod, dominance, alpha = 0.5) {
+    return +(persistenceMod * (1 - alpha * dominance)).toFixed(4);
   }
 
   // --- Подсчёт выигрышей сетов ---
@@ -206,9 +209,7 @@
     const pr = (playerPoints + oppPoints) ? Math.tanh((playerPoints - oppPoints) / (playerPoints + oppPoints)) : 0;
     const avgH = (playerSets + oppSets) ? handicap / (playerSets + oppSets) : 0;
     const hn = Math.max(-1, Math.min(1, avgH / cfg.fMax));
-    const qualityBonus = win
-      ? (playerSets === 3 && oppSets === 0 ? 0.2 : playerSets === 3 && oppSets === 1 ? 0.1 : 0)
-      : 0;
+    const qualityBonus = win ? (playerSets === 3 && oppSets === 0 ? 0.2 : playerSets === 3 && oppSets === 1 ? 0.1 : 0) : 0;
     const Mi = cfg.a1 * win + cfg.a2 * sr + cfg.a3 * pr + cfg.a4 * hn + qualityBonus;
 
     return {
@@ -229,7 +230,7 @@
     };
   }
 
-  // --- Парсер секции таблицы (все матчи без лимита) ---
+  // --- Парсер секции игрока (без лимита) ---
   function parseSection(table) {
     const title = table.querySelector("tr:first-child td")?.textContent || "";
     const header = title.replace(/^Последние игры\s*/i, "").replace(/:$/, "").trim();
@@ -313,7 +314,7 @@
     })).sort((a, b) => parseFloat(b.probability) - parseFloat(a.probability));
   }
 
-  // --- Подсчёт сетов для BT модели ---
+  // --- Сбор данных для модели Bradley-Terry ---
   function getSetWeights(games) {
     const setResults = [];
     games.forEach(g => {
@@ -328,7 +329,7 @@
     return setResults;
   }
 
-  // --- Логарифмическая функция правдоподобия для BT ---
+  // --- Логарифмическая функция правдоподобия для Bradley-Terry ---
   function negLogLikelihood(log_r, setResults) {
     const [log_rA, log_rB] = log_r;
     const rA = Math.exp(log_rA);
@@ -357,7 +358,7 @@
     return [Math.exp(best[0]), Math.exp(best[1])];
   }
 
-  // --- Вероятности BT ---
+  // --- Вероятности по Bradley-Terry ---
   function calcBTScoreProbs(pA, pB) {
     return [
       { score: "3:0", probability: (Math.pow(pA, 3) * 100).toFixed(1) + "%" },
@@ -377,35 +378,41 @@
     return "🔴";
   }
 
-  // --- Основной анализ ---
+  // Всем матчам соответствующие сырые результаты и очки для дополнительных вычислений
+  function extractMatchResults(games, isPlayerB = false) {
+    return games
+      .map(g => {
+        const match = g.rawScore && g.rawScore.match(/^(\d+):(\d+)/);
+        if (!match) return null;
+        let a = Number(match[1]);
+        let b = Number(match[2]);
+        if (isPlayerB) [a, b] = [b, a];
+        return `${a}:${b}`;
+      })
+      .filter(Boolean);
+  }
+
+  // --- Основная функция анализа ---
   function performAnalysis() {
     const tables = document.querySelectorAll("table.ev-mstat-tbl");
     if (tables.length < 2) return { success: false, error: "На странице не найдены таблицы статистики (нужно 2)." };
-
     const A = parseSection(tables[0]);
     const B = parseSection(tables[1]);
     if (!A.games.length || !B.games.length) return { success: false, error: "Нет данных об играх." };
-
     const h2hData = parseH2H(A.player, B.player);
-
     const sA = strengthAdj(A.games);
     const sB = strengthAdj(B.games);
-
     const vA = calcForaVariance(A.games);
     const vB = calcForaVariance(B.games);
-
     const stabWeight = cfg.stabilityWeight || 0.5;
     const stabFactorA = 1 / (1 + vA / 6);
     const stabFactorB = 1 / (1 + vB / 6);
-
     const kAdj = cfg.k * stabWeight;
     const adjustedDiff = sA * stabFactorA - sB * stabFactorB;
-
     let prob = 1 / (1 + Math.exp(-kAdj * adjustedDiff));
     prob = Math.min(0.92, Math.max(0.08, prob));
     const smoothing = 0.12;
     const probFinal = prob * (1 - smoothing) + 0.5 * smoothing;
-
     const W_h2h = 0.6, W_form = 0.4;
     const R_h2h = calcRh2h(A.player, B.player);
     const R_form = (() => {
@@ -443,10 +450,19 @@
       }).join(", ");
     }).filter(Boolean);
 
+    const playerAMatchResults = extractMatchResults(A.games, false);
+    const playerBMatchResults = extractMatchResults(B.games, true);
+
     const KU_tb35_playerA = calculatePersistenceCoefficient(playerAMatchRawScores);
     const KU_tb35_playerB = calculatePersistenceCoefficient(playerBMatchRawScores);
     const KUmodPlayerA = calculatePersistenceMod(playerAMatchRawScores);
     const KUmodPlayerB = calculatePersistenceMod(playerBMatchRawScores);
+
+    const domA = calculateDominance(playerAMatchResults);
+    const domB = calculateDominance(playerBMatchResults);
+
+    const combinedA = combinedIndex(KUmodPlayerA, domA);
+    const combinedB = combinedIndex(KUmodPlayerB, domB);
 
     return {
       success: true,
@@ -466,6 +482,8 @@
           visualization: createMatchVisualization(A.games),
           ku_tb35: KU_tb35_playerA,
           ku_tb35_mod: KUmodPlayerA,
+          dominance: domA,
+          combinedIndex: combinedA,
         },
         playerB: {
           name: B.player,
@@ -482,6 +500,8 @@
           visualization: createMatchVisualization(B.games),
           ku_tb35: KU_tb35_playerB,
           ku_tb35_mod: KUmodPlayerB,
+          dominance: domB,
+          combinedIndex: combinedB,
         },
         confidence: getConfidence(probFinal, 1 - probFinal, vA, vB, h2hData.total),
         favorite: probFinal > 0.5 ? A.player : B.player,
@@ -507,8 +527,7 @@
   chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
     if (req.action === "analyze") {
       sendResponse(performAnalysis());
-      return true; // удерживаем порт открытым
+      return true;
     }
   });
-
 })();
