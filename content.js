@@ -130,16 +130,8 @@
     return +(allMatchCoefficients.reduce((a, b) => a + b, 0) / allMatchCoefficients.length).toFixed(4);
   }
 
-  // --- Доминирование (доля побед 3:0) ---
-  function calculateDominance(matchResults) {
-    if (!Array.isArray(matchResults) || matchResults.length === 0) return 0;
-    const total = matchResults.length;
-    const count_3_0 = matchResults.filter(score => score.startsWith('3:0')).length;
-    return +(count_3_0 / total).toFixed(4);
-  }
-
   // --- Итоговый комбинированный индекс ---
-  function combinedIndex(persistenceMod, dominance, alpha = 0.5) {
+  function combinedIndex(persistenceMod, dominance = 0, alpha = 0.5) {
     return +(persistenceMod * (1 - alpha * dominance)).toFixed(4);
   }
 
@@ -264,24 +256,11 @@
     return Math.tanh((fW - fL) / cfg.fMax);
   }
 
-  function calcForaVariance(games) {
-    if (!games.length) return 0;
-    const meanVal = games.reduce((s, g) => s + g.handicap, 0) / games.length;
-    const variance = games.reduce((s, g) => s + (g.handicap - meanVal) ** 2, 0) / games.length;
-    return Math.sqrt(variance);
-  }
-
   // --- Скорректированная сила ---
   function strengthAdj(games) {
     const s = calcBaseS(games);
     const foraB = calcForaBalance(games);
     return s + 0.25 * foraB;
-  }
-
-  // --- Стабильность ---
-  function calcStability(v) {
-    const val = Math.log(1 + v) * 10;
-    return Math.round(Math.max(0, 100 - val * 4));
   }
 
   // --- Подсчёт сухих побед/поражений ---
@@ -297,100 +276,22 @@
     return games.slice(0, 10).map(g => (g.win ? "🟢" : "🔴")).join(" ");
   }
 
-  // --- Предсказание вероятностей ---
-  function predictAllScores(p) {
-    const q = 1 - p;
-    const scores = {
-      "3:0": p ** 3,
-      "3:1": 3 * p ** 3 * q,
-      "3:2": 6 * p ** 3 * q ** 2,
-      "0:3": q ** 3,
-      "1:3": 3 * q ** 3 * p,
-      "2:3": 6 * q ** 3 * p ** 2,
-    };
-    return Object.entries(scores).map(([score, prob]) => ({
-      score,
-      probability: (prob * 100).toFixed(1) + "%",
-    })).sort((a, b) => parseFloat(b.probability) - parseFloat(a.probability));
-  }
-
-  // --- Сбор данных для модели Bradley-Terry ---
-  function getSetWeights(games) {
-    const setResults = [];
-    games.forEach(g => {
-      (g.pts || []).forEach(([a, b]) => {
-        setResults.push({
-          winA: a > b ? 1 : 0,
-          winB: a < b ? 1 : 0,
-          weight: Math.log(1 + Math.abs(a - b)),
-        });
-      });
-    });
-    return setResults;
-  }
-
-  // --- Логарифмическая функция правдоподобия для Bradley-Terry ---
-  function negLogLikelihood(log_r, setResults) {
-    const [log_rA, log_rB] = log_r;
-    const rA = Math.exp(log_rA);
-    const rB = Math.exp(log_rB);
-    let ll = 0;
-    setResults.forEach(res => {
-      const p = rA / (rA + rB);
-      const pClip = Math.max(1e-10, Math.min(p, 1 - 1e-10));
-      ll += res.weight * (res.winA * Math.log(pClip) + res.winB * Math.log(1 - pClip));
-    });
-    return -ll;
-  }
-
-  // --- Оценка рейтингов Bradley-Terry ---
-  function estimateBradleyTerryRatings(setResults) {
-    let best = null, bestVal = Infinity;
-    for (let log_rA = -2; log_rA <= 2; log_rA += 0.1) {
-      for (let log_rB = -2; log_rB <= 2; log_rB += 0.1) {
-        const val = negLogLikelihood([log_rA, log_rB], setResults);
-        if (val < bestVal) {
-          bestVal = val;
-          best = [log_rA, log_rB];
-        }
-      }
+    chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
+    if (req.action === "analyze") {
+      const result = performAnalysis();
+      console.log("content.js result:", result);
+      sendResponse(result);
+      return true;
     }
-    return [Math.exp(best[0]), Math.exp(best[1])];
-  }
+  });
+  
 
-  // --- Вероятности по Bradley-Terry ---
-  function calcBTScoreProbs(pA, pB) {
-    return [
-      { score: "3:0", probability: (Math.pow(pA, 3) * 100).toFixed(1) + "%" },
-      { score: "3:1", probability: (3 * Math.pow(pA, 3) * pB * 100).toFixed(1) + "%" },
-      { score: "3:2", probability: (6 * Math.pow(pA, 3) * Math.pow(pB, 2) * 100).toFixed(1) + "%" },
-      { score: "0:3", probability: (Math.pow(pB, 3) * 100).toFixed(1) + "%" },
-      { score: "1:3", probability: (3 * Math.pow(pB, 3) * pA * 100).toFixed(1) + "%" },
-      { score: "2:3", probability: (6 * Math.pow(pB, 3) * Math.pow(pA, 2) * 100).toFixed(1) + "%" },
-    ];
-  }
-
-  // --- Индикатор уверенности ---
-  function getConfidence(pA, pB, vA, vB, hTot) {
-    const maxP = Math.max(pA, pB);
-    if (maxP > 0.75 && Math.min(vA, vB) < 8 && hTot >= 3) return "🟢";
-    if (maxP > 0.65 && Math.min(vA, vB) < 12) return "🟡";
-    return "🔴";
-  }
-
-  // Всем матчам соответствующие сырые результаты и очки для дополнительных вычислений
-  function extractMatchResults(games, isPlayerB = false) {
-    return games
-      .map(g => {
-        const match = g.rawScore && g.rawScore.match(/^(\d+):(\d+)/);
-        if (!match) return null;
-        let a = Number(match[1]);
-        let b = Number(match[2]);
-        if (isPlayerB) [a, b] = [b, a];
-        return `${a}:${b}`;
-      })
-      .filter(Boolean);
-  }
+  chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
+    if (req.action === "analyze") {
+      sendResponse(performAnalysis());
+      return true;
+    }
+  });
 
   // --- Основная функция анализа ---
   function performAnalysis() {
@@ -402,13 +303,9 @@
     const h2hData = parseH2H(A.player, B.player);
     const sA = strengthAdj(A.games);
     const sB = strengthAdj(B.games);
-    const vA = calcForaVariance(A.games);
-    const vB = calcForaVariance(B.games);
-    const stabWeight = cfg.stabilityWeight || 0.5;
-    const stabFactorA = 1 / (1 + vA / 6);
-    const stabFactorB = 1 / (1 + vB / 6);
-    const kAdj = cfg.k * stabWeight;
-    const adjustedDiff = sA * stabFactorA - sB * stabFactorB;
+
+    const kAdj = cfg.k;
+    const adjustedDiff = sA - sB;
     let prob = 1 / (1 + Math.exp(-kAdj * adjustedDiff));
     prob = Math.min(0.92, Math.max(0.08, prob));
     const smoothing = 0.12;
@@ -458,11 +355,8 @@
     const KUmodPlayerA = calculatePersistenceMod(playerAMatchRawScores);
     const KUmodPlayerB = calculatePersistenceMod(playerBMatchRawScores);
 
-    const domA = calculateDominance(playerAMatchResults);
-    const domB = calculateDominance(playerBMatchResults);
-
-    const combinedA = combinedIndex(KUmodPlayerA, domA);
-    const combinedB = combinedIndex(KUmodPlayerB, domB);
+    const combinedA = combinedIndex(KUmodPlayerA /* domA=0 */);
+    const combinedB = combinedIndex(KUmodPlayerB /* domB=0 */);
 
     return {
       success: true,
@@ -472,7 +366,6 @@
           strength: (50 + 50 * sA).toFixed(1),
           probability: (probFinal * 100).toFixed(1),
           h2h: `${h2hData.wA}-${h2hData.wB}`,
-          stability: calcStability(vA),
           s2: calcBaseS(A.games, 2).toFixed(3),
           s5: calcBaseS(A.games, 5).toFixed(3),
           dryWins: calcDryGames(A.games).wins,
@@ -482,7 +375,6 @@
           visualization: createMatchVisualization(A.games),
           ku_tb35: KU_tb35_playerA,
           ku_tb35_mod: KUmodPlayerA,
-          dominance: domA,
           combinedIndex: combinedA,
         },
         playerB: {
@@ -490,7 +382,6 @@
           strength: (50 + 50 * sB).toFixed(1),
           probability: ((1 - probFinal) * 100).toFixed(1),
           h2h: `${h2hData.wB}-${h2hData.wA}`,
-          stability: calcStability(vB),
           s2: calcBaseS(B.games, 2).toFixed(3),
           s5: calcBaseS(B.games, 5).toFixed(3),
           dryWins: calcDryGames(B.games).wins,
@@ -500,10 +391,9 @@
           visualization: createMatchVisualization(B.games),
           ku_tb35: KU_tb35_playerB,
           ku_tb35_mod: KUmodPlayerB,
-          dominance: domB,
           combinedIndex: combinedB,
         },
-        confidence: getConfidence(probFinal, 1 - probFinal, vA, vB, h2hData.total),
+        confidence: getConfidence(probFinal, 1 - probFinal, 0, 0, h2hData.total),
         favorite: probFinal > 0.5 ? A.player : B.player,
         predictedScores,
         btScoreProbs,
@@ -523,11 +413,4 @@
       },
     };
   }
-
-  chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
-    if (req.action === "analyze") {
-      sendResponse(performAnalysis());
-      return true;
-    }
-  });
 })();

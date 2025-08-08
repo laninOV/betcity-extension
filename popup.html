@@ -9,40 +9,32 @@
 <body>
   <div class="container">
 
-    <!-- Индикатор загрузки -->
-    <div id="loading" class="loading hidden">
-      <div class="spinner"></div>
-      Анализируем...
-    </div>
-
-    <!-- Блок ошибки -->
-    <div id="error" class="error hidden"><p></p></div>
-
-    <!-- Рекомендации и пояснения -->
+    <!-- Рекомендация фаворита и индикатор уверенности -->
     <div id="recommendationBlock" style="
       padding: 4px 8px;
       background: linear-gradient(135deg, #31489e 0%, #152951 100%);
       border-radius: 6px;
-      margin: 4px 8px 6px 8px;
+      margin: 4px 8px 12px 8px;
       color: #eaefff;
       font-weight: 600;
-      font-size: 11px;
+      font-size: 14px;
       user-select: text;
       box-shadow: none;
-      line-height: 1.2;
+      line-height: 1.4;
+      white-space: pre-wrap;
     "></div>
 
-    <!-- Топ-3 вероятных счетов в две колонки -->
-    <div id="topScoresWrapper" style="display: flex; gap: 12px; margin: 0 12px 6px 12px;">
+    <!-- Топ-3 вероятных счетов -->
+    <div id="topScoresWrapper" style="display: flex; gap: 12px; margin: 0 12px 12px 12px;">
       <section class="stats-card" style="flex:1;">
-        <h3 style="margin:0 0 3px;">🏆 Топ 3 счета (Общее)</h3>
+        <h3 style="margin:0 0 6px;">🏆 Топ 3 счета (Общее)</h3>
         <table class="mini-table" aria-label="Топ 3 наиболее вероятных счета - Общие">
           <thead><tr><th>Счет</th><th>Вероятность</th></tr></thead>
           <tbody id="topGeneralScoresBody"></tbody>
         </table>
       </section>
       <section class="stats-card" style="flex:1;">
-        <h3 style="margin:0 0 3px;">🏆 Топ 3 счета (Брэдли–Терри)</h3>
+        <h3 style="margin:0 0 6px;">🏆 Топ 3 счета (Брэдли–Терри)</h3>
         <table class="mini-table" aria-label="Топ 3 наиболее вероятных счета - Брэдли–Терри">
           <thead><tr><th>Счет</th><th>Вероятность</th></tr></thead>
           <tbody id="topBTScoresBody"></tbody>
@@ -50,8 +42,8 @@
       </section>
     </div>
 
-    <!-- Краткая основная статистика игроков -->
-    <div id="mainQuickStats" class="stats-card" style="margin: 0 12px 6px 12px; padding:8px;">
+    <!-- Основная краткая статистика игроков -->
+    <div id="mainQuickStats" class="stats-card" style="margin: 0 12px 12px 12px; padding:8px;">
       <table style="width:100%; font-size:12px; border-collapse: collapse; text-align:center;">
         <thead>
           <tr>
@@ -59,76 +51,14 @@
             <th style="width: 15%;">S</th>
             <th style="width: 15%;">Вероятность</th>
             <th style="width: 20%;">H2H</th>
-            <th style="width: 15%;">Стабильность</th>
           </tr>
         </thead>
         <tbody id="mainTableBody"></tbody>
       </table>
     </div>
 
-    <!-- Расширенный контейнер с таблицей КУ, доминирования, рекомендаций -->
-    <div id="kuBlockWrap" class="stats-card" style="margin: 0 12px 6px 12px; padding:8px;">
-      <table id="kuBlockTable" style="width:100%; font-size:12px; border-collapse: collapse; text-align: center;">
-        <thead>
-          <tr>
-            <th style="text-align:left;">Игрок</th>
-            <th>КУ_ТБ3.5</th>
-            <th>КУ_ТБ3.5_мод</th>
-            <th>Dom 3:0</th>
-            <th>Итог. индекс</th>
-            <th>Рекомендация</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr id="kuRowA">
-            <td id="kuNameA"></td>
-            <td id="ku35A"></td>
-            <td id="ku35modA"></td>
-            <td id="domA"></td>
-            <td id="combA"></td>
-            <td id="recA"></td>
-          </tr>
-          <tr id="kuRowB">
-            <td id="kuNameB"></td>
-            <td id="ku35B"></td>
-            <td id="ku35modB"></td>
-            <td id="domB"></td>
-            <td id="combB"></td>
-            <td id="recB"></td>
-          </tr>
-        </tbody>
-      </table>
-      <div style="font-size:11.5px; color: #888; text-align:left; margin-top:4px;">
-        <b>КУ_ТБ3.5_мод</b> — упорство с учетом длины матчей и штрафа за проигрыши.<br>
-        <b>Dom 3:0</b> — доля быстрых побед.<br>
-        <b>Итоговый индекс</b> — сочетание упорства и доминирования.
-      </div>
-    </div>
-
-    <!-- Статистика игроков -->
-    <div style="display: flex; gap: 12px; margin: 0 12px 6px 12px;">
-      <section class="stats-card" style="flex:1;">
-        <h3>📊 Статистика игроков</h3>
-        <table class="mini-table" aria-describedby="statsDesc">
-          <thead>
-            <tr>
-              <th>Показатель</th>
-              <th id="statName1">Игрок 1</th>
-              <th id="statName2">Игрок 2</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td>S₂</td><td id="s2Player1">-</td><td id="s2Player2">-</td></tr>
-            <tr><td>S₅</td><td id="s5Player1">-</td><td id="s5Player2">-</td></tr>
-            <tr><td>Сухие победы</td><td id="dryWins1">-</td><td id="dryWins2">-</td></tr>
-            <tr><td>Сухие поражения</td><td id="dryLosses1">-</td><td id="dryLosses2">-</td></tr>
-          </tbody>
-        </table>
-      </section>
-    </div>
-
-    <!-- Визуализация результатов -->
-    <div style="display: flex; gap: 12px; margin: 0 12px 8px 12px;">
+    <!-- Визуализация результатов и победы в сетах -->
+    <div style="display: flex; gap: 12px; margin: 0 12px 12px 12px;">
       <section class="stats-card" style="flex:1;">
         <h3>🎲 Визуализация результатов</h3>
         <div class="match-visualization" aria-label="Визуализация последних результатов игроков">
@@ -161,6 +91,52 @@
             </tr>
           </thead>
           <tbody id="setsTableBody"></tbody>
+        </table>
+      </section>
+    </div>
+
+    <!-- Сравнительная таблица по показателям -->
+    <div style="margin: 0 12px 12px 12px;">
+      <section class="stats-card">
+        <h3>📋 Сравнительная таблица по показателям</h3>
+        <table class="mini-table" style="width:100%; font-size:13px; border-collapse: collapse; text-align:center;">
+          <thead>
+            <tr>
+              <th>Показатель</th>
+              <th>Игрок 1</th>
+              <th>Игрок 2</th>
+            </tr>
+          </thead>
+          <tbody id="comparisonTableBody"></tbody>
+          <tfoot>
+            <tr style="font-weight: 700; background: #28375e; color: #c2eafc;">
+              <td>Итоговая вероятность победы</td>
+              <td id="finalProbA"></td>
+              <td id="finalProbB"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </section>
+    </div>
+
+    <!-- Статистика игроков -->
+    <div style="display: flex; gap: 12px; margin: 0 12px 12px 12px;">
+      <section class="stats-card" style="flex:1;">
+        <h3>📊 Статистика игроков</h3>
+        <table class="mini-table" aria-describedby="statsDesc">
+          <thead>
+            <tr>
+              <th>Показатель</th>
+              <th id="statName1">Игрок 1</th>
+              <th id="statName2">Игрок 2</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>S₂</td><td id="s2Player1">-</td><td id="s2Player2">-</td></tr>
+            <tr><td>S₅</td><td id="s5Player1">-</td><td id="s5Player2">-</td></tr>
+            <tr><td>Сухие победы</td><td id="dryWins1">-</td><td id="dryWins2">-</td></tr>
+            <tr><td>Сухие поражения</td><td id="dryLosses1">-</td><td id="dryLosses2">-</td></tr>
+          </tbody>
         </table>
       </section>
     </div>
