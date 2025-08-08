@@ -92,6 +92,8 @@
           </thead>
           <tbody id="setsTableBody"></tbody>
         </table>
+        <!-- Новый блок с итоговой статистикой сетов -->
+        <div id="setsSummary" style="margin-top: 6px; font-size: 13px; font-weight: 600; color: #ddeeff;"></div>
       </section>
     </div>
 
@@ -162,6 +164,18 @@
         </table>
       </section>
     </div>
+
+    <!-- Блок ошибок (если потребуется) -->
+    <div id="error" class="error hidden" style="
+      margin: 0 12px;
+      color: #ff7373;
+      background: #231a1a;
+      padding: 6px 8px;
+      border-radius: 6px;
+      display: none;
+    "><p></p></div>
+
+    <div id="results" style="display:none"></div>
 
   </div>
 

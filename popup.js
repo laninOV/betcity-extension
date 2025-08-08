@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const loading = document.getElementById('loading');
+  const loading = { classList: { add(){} }, style: { display:"none" } }; // заглушка
   const error = document.getElementById('error');
   const results = document.getElementById('results');
 
@@ -8,7 +8,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!visStr) return '';
     return [...visStr].map(ch => `<span style="margin-right:4px;">${ch}</span>`).join('');
   }
-
   // Рекомендации по КУ_ТБ3.5
   function getKuTbRecommendation(value) {
     if (value === null || value === undefined) return '-';
@@ -16,7 +15,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (value >= 0.30) return 'Учитывать соперника';
     return 'Избегать ТБ 3.5';
   }
-
   // Формирование рекомендации и подсчёт очков по метрикам
   function makeRecommendation(d) {
     const pa = parseFloat(d.playerA.probability);
@@ -30,6 +28,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const btA = parseFloat(d.bt_pSetA ?? 0.5);
     const btB = parseFloat(d.bt_pSetB ?? 0.5);
 
+    // Считаем процент выигранных сетов
+    const countWonSets = (setWins) => {
+      if (!setWins) return 0;
+      return Object.values(setWins).reduce((sum, [wins]) => sum + (Number(wins.split('/')[0]) || 0), 0);
+    };
+    const countTotalSets = (setWins) => {
+      if (!setWins) return 0;
+      return Object.values(setWins).reduce((sum, [wins]) => sum + (Number((wins || "0/0").split('/')[1]) || 0), 0);
+    };
+    const p1Won = countWonSets(d.playerA.setWins);
+    const p1Total = countTotalSets(d.playerA.setWins);
+    const p2Won = countWonSets(d.playerB.setWins);
+    const p2Total = countTotalSets(d.playerB.setWins);
+    const p1Percent = p1Total ? p1Won / p1Total : 0;
+    const p2Percent = p2Total ? p2Won / p2Total : 0;
+
     const weights = {
       probabilityDiff: 2,
       strengthDiff: 1,
@@ -37,14 +51,13 @@ document.addEventListener('DOMContentLoaded', () => {
       kuHigh: 0.5,
       kuLowOpponent: 0.3,
       dryWins: 0.2,
-      btAdv: 0.4
+      btAdv: 0.4,
+      winSetPercentAdv: 0.5  // вес за процент выигранных сетов
     };
-
     const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0);
     const scores = { A: 0, B: 0 };
     const reasonsA = [];
     const reasonsB = [];
-
     if (pa > pb + 5) { scores.A += weights.probabilityDiff; reasonsA.push("Высокая вероятность"); }
     if (pb > pa + 5) { scores.B += weights.probabilityDiff; reasonsB.push("Высокая вероятность"); }
     if (sa > sb + 2) { scores.A += weights.strengthDiff; reasonsA.push("Больше сила"); }
@@ -61,10 +74,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btA > btB + 0.1) { scores.A += weights.btAdv; reasonsA.push("Лучше (BT) по сетам"); }
     if (btB > btA + 0.1) { scores.B += weights.btAdv; reasonsB.push("Лучше (BT) по сетам"); }
 
-    let verdictText = '';
-    let favorite = null;
-    let favScore = 0;
+    if (p1Percent > p2Percent + 0.1 && p1Percent > 0.55) {
+      scores.A += weights.winSetPercentAdv;
+      reasonsA.push("Лучший процент выигранных сетов");
+    }
+    if (p2Percent > p1Percent + 0.1 && p2Percent > 0.55) {
+      scores.B += weights.winSetPercentAdv;
+      reasonsB.push("Лучший процент выигранных сетов");
+    }
 
+    let verdictText = '', favorite = null, favScore = 0;
     if (scores.A - scores.B > 1.2) {
       verdictText = `Фаворит: ${d.playerA.name} (ЗА)\nПричины: ${reasonsA.join(', ')}`;
       favorite = d.playerA.name;
@@ -74,19 +93,15 @@ document.addEventListener('DOMContentLoaded', () => {
       favorite = d.playerB.name;
       favScore = scores.B;
     } else {
-      verdictText = `Равные шансы или высокая неопределённость — аккуратнее!\nЗА ${d.playerA.name}: ${reasonsA.join(', ') || 'нет ярких причин'}\nЗА ${d.playerB.name}: ${reasonsB.join(', ') || 'нет ярких причин'}`;
+      verdictText = `Равные шансы или высокая неопределённость — аккуратнее!\nЗА ${d.playerA.name}: ${reasonsA.join(', ')||'нет ярких причин'}\nЗА ${d.playerB.name}: ${reasonsB.join(', ')||'нет ярких причин'}`;
     }
-
     return { verdictText, favorite, favScore, totalWeight };
   }
 
-  // Вывод рекомендации + индикатор уверенности
   function fillRecommendationBlock(d) {
     const recBlock = document.getElementById('recommendationBlock');
     if (!recBlock) return;
-
     const rec = makeRecommendation(d);
-
     let confidenceHTML = '';
     if (rec.favorite) {
       const percent = ((rec.favScore / rec.totalWeight) * 100).toFixed(1);
@@ -94,11 +109,9 @@ document.addEventListener('DOMContentLoaded', () => {
         Индикатор уверенности: <strong>${rec.favScore.toFixed(2)}</strong> / <em>${rec.totalWeight.toFixed(2)}</em> (${percent}%)
       </div>`;
     }
-
     recBlock.innerHTML = `<pre style="margin:0; white-space: pre-wrap; font-weight: 700; font-size: 14px; color:#dbe7ff;">${rec.verdictText}</pre>${confidenceHTML}`;
   }
 
-  // Заполнение топ-3 таблиц вероятных счетов
   function fillTop3Tables(d) {
     const topGeneralScoresBody = document.getElementById('topGeneralScoresBody');
     if (topGeneralScoresBody && d.predictedScores && Array.isArray(d.predictedScores)) {
@@ -107,7 +120,6 @@ document.addEventListener('DOMContentLoaded', () => {
         `<tr><td>${item.score}</td><td>${parseFloat(item.probability).toFixed(1)}%</td></tr>`
       ).join('');
     }
-
     const topBTScoresBody = document.getElementById('topBTScoresBody');
     if (topBTScoresBody && d.btScoreProbs && Array.isArray(d.btScoreProbs)) {
       const top3bt = [...d.btScoreProbs].sort((a, b) => parseFloat(b.probability) - parseFloat(a.probability)).slice(0, 3);
@@ -117,11 +129,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Заполнение основной таблицы игроков
   function fillMainTable(data) {
     const isFavA = parseFloat(data.playerA.probability) > 50;
     const rows = document.querySelectorAll('#mainTableBody tr');
-
     if (rows.length === 2) {
       rows[0].className = isFavA ? 'fav-row' : '';
       rows[1].className = !isFavA ? 'fav-row' : '';
@@ -155,7 +165,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Заполнение дополнительной статистики игроков
   function fillStatsTables(data) {
     document.getElementById('statName1').textContent = data.playerA.name;
     document.getElementById('statName2').textContent = data.playerB.name;
@@ -169,27 +178,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('dryLosses2').textContent = data.playerB.dryLosses;
   }
 
-  // Заполнение блока коэффициентов упорства
-  function fillKUBlock(data) {
-    if (!data) return;
-    document.getElementById('kuNameA').textContent = data.playerA.name;
-    document.getElementById('ku35A').textContent = (+data.playerA.ku_tb35).toFixed(3);
-    document.getElementById('ku35modA').textContent = (+data.playerA.ku_tb35_mod).toFixed(3);
-    document.getElementById('combA').textContent = (+data.playerA.combinedIndex).toFixed(3);
-    document.getElementById('recA').textContent = getKuTbRecommendation(+data.playerA.ku_tb35_mod);
+  function fillKUBlock(data) { /* placeholder for future use */ }
 
-    document.getElementById('kuNameB').textContent = data.playerB.name;
-    document.getElementById('ku35B').textContent = (+data.playerB.ku_tb35).toFixed(3);
-    document.getElementById('ku35modB').textContent = (+data.playerB.ku_tb35_mod).toFixed(3);
-    document.getElementById('combB').textContent = (+data.playerB.combinedIndex).toFixed(3);
-    document.getElementById('recB').textContent = getKuTbRecommendation(+data.playerB.ku_tb35_mod);
-
-    const isFavA = parseFloat(data.playerA.probability) > parseFloat(data.playerB.probability);
-    document.getElementById('kuRowA').className = isFavA ? "fav-row" : "";
-    document.getElementById('kuRowB').className = !isFavA ? "fav-row" : "";
-  }
-
-  // Визуализация результатов
   function fillVisualization(data) {
     const isFavA = parseFloat(data.playerA.probability) > 50;
     document.getElementById('vizNameFav').textContent = isFavA ? data.playerA.name : data.playerB.name;
@@ -207,31 +197,33 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Подсчёт выигранных сетов
   function countWonSets(setWins) {
     if (!setWins) return 0;
     return Object.values(setWins).reduce((sum, [wins]) => sum + (Number(wins.split('/')[0]) || 0), 0);
   }
-
-  // Подсчёт сыгранных сетов
   function countTotalSets(setWins) {
     if (!setWins) return 0;
     return Object.values(setWins).reduce((sum, [wins]) => sum + (Number((wins || "0/0").split('/')[1]) || 0), 0);
   }
-
-  // Заполнение таблицы сетов
   function fillSetsTable(data) {
     const p1Name = data.playerA.name || 'Игрок 1';
     const p2Name = data.playerB.name || 'Игрок 2';
-
     const p1Won = countWonSets(data.playerA.setWins);
     const p1Total = countTotalSets(data.playerA.setWins);
     const p2Won = countWonSets(data.playerB.setWins);
     const p2Total = countTotalSets(data.playerB.setWins);
 
-    document.getElementById('p1Sets').textContent = `${p1Name} (${p1Won}/${p1Total})`;
-    document.getElementById('p2Sets').textContent = `${p2Name} (${p2Won}/${p2Total})`;
+    // Добавляем вывод процента выигранных сетов
+    const setsSummary = document.getElementById('setsSummary');
+    if (setsSummary) {
+      const p1Percent = p1Total ? ((p1Won / p1Total) * 100).toFixed(1) : '0';
+      const p2Percent = p2Total ? ((p2Won / p2Total) * 100).toFixed(1) : '0';
+      setsSummary.innerHTML = `
+      `;
 
+    document.getElementById('p1Sets').textContent = `${p1Name} (${p1Won}/${p1Total}) (${p1Percent}%)`;
+    document.getElementById('p2Sets').textContent = `${p2Name} (${p2Won}/${p2Total}) (${p2Percent}%)`;  
+    }
     const tbody = document.getElementById('setsTableBody');
     tbody.innerHTML = '';
     if (data.playerA.setWins) {
@@ -242,7 +234,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Заполнение таблиц вероятностей счетов
   function fillScoreDetails(data) {
     const scoreTableBody = document.getElementById('scoreTableBody');
     if (scoreTableBody && data.predictedScores) {
@@ -254,7 +245,6 @@ document.addEventListener('DOMContentLoaded', () => {
         scoreTableBody.appendChild(row);
       });
     }
-
     const btScoreTableBody = document.getElementById('btScoreTableBody');
     if (btScoreTableBody && Array.isArray(data.btScoreProbs)) {
       btScoreTableBody.innerHTML = '';
@@ -267,11 +257,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Заполнение сравнительной таблицы показателей
   function fillComparisonTable(data) {
     const tbody = document.getElementById('comparisonTableBody');
     if (!tbody) return;
-
     const rows = [
       ['Сила', data.playerA.strength, data.playerB.strength],
       ['Вероятность (%)', `${data.playerA.probability}%`, `${data.playerB.probability}%`],
@@ -284,7 +272,6 @@ document.addEventListener('DOMContentLoaded', () => {
       ['КУ_ТБ3.5 мод', Number(data.playerA.ku_tb35_mod).toFixed(3), Number(data.playerB.ku_tb35_mod).toFixed(3)],
       ['Итоговый индекс', Number(data.playerA.combinedIndex).toFixed(3), Number(data.playerB.combinedIndex).toFixed(3)]
     ];
-
     tbody.innerHTML = rows.map(([label, valA, valB]) => `
       <tr>
         <td style="text-align:left; padding-left:10px;">${label}</td>
@@ -292,40 +279,33 @@ document.addEventListener('DOMContentLoaded', () => {
         <td>${valB}</td>
       </tr>
     `).join('');
-
     document.getElementById('finalProbA').textContent = `${data.playerA.probability}%`;
     document.getElementById('finalProbB').textContent = `${data.playerB.probability}%`;
   }
 
-  // Отображение ошибки
   function setError(message) {
-    loading.classList.add('hidden');
     if (error) {
       error.querySelector('p').textContent = message;
       error.classList.remove('hidden');
+      error.style.display = '';
     }
-    if (results) results.classList.add('hidden');
+    if (results) results.style.display = 'none';
   }
-
-  // Показ результатов
   function showResults() {
-    loading.classList.add('hidden');
-    error.classList.add('hidden');
-    if (results) results.classList.remove('hidden');
+    if (error) {
+      error.classList.add('hidden');
+      error.style.display = 'none';
+    }
+    if (results) results.style.display = '';
   }
 
-  // Запуск анализа и сбор данных
   function launchAnalyze() {
-    loading.classList.remove('hidden');
-    error.classList.add('hidden');
-    if (results) results.classList.add('hidden');
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (!tabs || !tabs[0]) {
         setError('Не найдена активная вкладка.');
         return;
       }
       chrome.tabs.sendMessage(tabs[0].id, { action: 'analyze' }, (response) => {
-        console.log('popup.js response:', response);
         try {
           if (chrome.runtime.lastError || !response || !response.success) {
             throw new Error((response && response.error) || (chrome.runtime.lastError ? chrome.runtime.lastError.message : 'Ошибка анализа.'));
@@ -343,8 +323,6 @@ document.addEventListener('DOMContentLoaded', () => {
           fillComparisonTable(d);
         } catch (e) {
           setError('Ошибка: ' + e.message);
-        } finally {
-          loading.classList.add('hidden');
         }
       });
     });
