@@ -18,22 +18,29 @@
     const tbl = [...document.querySelectorAll("table")].find(t =>
       t.querySelector("tr:first-child td")?.textContent.includes("Очные встречи")
     );
-    if (!tbl) return { wA: 0, wB: 0, total: 0, dryWinsA: 0, dryWinsB: 0, h2hGames: [] };
+    if (!tbl) return { wA: 0, wB: 0, total: 0, dryWinsA: 0, dryWinsB: 0, h2hGames: [], h2hSetWins: null };
 
     let wA = 0, wB = 0, dryA = 0, dryB = 0;
     const h2hGames = [];
+    const h2hSetData = { playerA: {}, playerB: {} };
+    
     Array.from(tbl.querySelectorAll("tr")).slice(2).forEach(r => {
       const playersTxt = r.querySelector("td.descr")?.textContent.trim();
       const score = r.querySelector("td.score")?.textContent.trim();
       const dateTxt = r.querySelector("td.date")?.textContent.trim();
       if (!playersTxt || !score || !dateTxt) return;
-      const m = score.match(/^(\d+):(\d+)/);
+      const m = score.match(/^(\d+):(\d+)\s*\(([^)]+)\)/);
       if (!m) return;
       const [d, mth, y] = dateTxt.split(".").map(Number);
       const dt = new Date(2000 + y, mth - 1, d);
       const home = playersTxt.startsWith(playerA);
       const [s1, s2] = [+m[1], +m[2]];
       const aWon = (home && s1 > s2) || (!home && s2 > s1);
+      
+      // Извлекаем данные о сетах из скобок
+      const setsText = m[3];
+      const sets = setsText.split(",").map(s => s.trim().split(":").map(Number));
+      
       if (aWon) {
         wA++;
         if ((home && s2 === 0) || (!home && s1 === 0)) dryA++;
@@ -41,9 +48,44 @@
         wB++;
         if ((home && s1 === 0) || (!home && s2 === 0)) dryB++;
       }
-      h2hGames.push({ win: aWon ? 1 : 0, date: dt, pts: null });
+      
+      // Сохраняем данные о сетах для H2H
+      sets.forEach(([a, b], idx) => {
+        const setKey = `set${idx + 1}`;
+        if (!h2hSetData.playerA[setKey]) h2hSetData.playerA[setKey] = { win: 0, total: 0 };
+        if (!h2hSetData.playerB[setKey]) h2hSetData.playerB[setKey] = { win: 0, total: 0 };
+        
+        if (home) {
+          if (a > b) h2hSetData.playerA[setKey].win++;
+          else h2hSetData.playerB[setKey].win++;
+        } else {
+          if (b > a) h2hSetData.playerA[setKey].win++;
+          else h2hSetData.playerB[setKey].win++;
+        }
+        h2hSetData.playerA[setKey].total++;
+        h2hSetData.playerB[setKey].total++;
+      });
+      
+      h2hGames.push({ win: aWon ? 1 : 0, date: dt, pts: sets });
     });
-    return { wA, wB, total: wA + wB, h2hGames, dryWinsA: dryA, dryWinsB: dryB };
+    
+    // Преобразуем данные в формат setWins
+    const h2hSetWins = {
+      playerA: Object.fromEntries(
+        Object.entries(h2hSetData.playerA).map(([set, data]) => [
+          set, 
+          [`${data.win}/${data.total}`, `${data.total - data.win}/${data.total}`]
+        ])
+      ),
+      playerB: Object.fromEntries(
+        Object.entries(h2hSetData.playerB).map(([set, data]) => [
+          set, 
+          [`${data.win}/${data.total}`, `${data.total - data.win}/${data.total}`]
+        ])
+      )
+    };
+    
+    return { wA, wB, total: wA + wB, h2hGames, dryWinsA: dryA, dryWinsB: dryB, h2hSetWins };
   }
 
   // --- Коэффициент очкового преимущества по личным встречам (весовой) ---
@@ -277,10 +319,27 @@
     return s + 0.25 * foraB;
   }
 
-  // --- Стабильность ---
-  function calcStability(v) {
-    const val = Math.log(1 + v) * 10;
-    return Math.round(Math.max(0, 100 - val * 4));
+  // --- Стабильность (улучшенный расчет) ---
+  function calcStability(games) {
+    if (!games.length) return 0;
+    
+    // 1. Стабильность по результатам (процент побед)
+    const winRate = games.filter(g => g.win).length / games.length;
+    const resultStability = Math.abs(winRate - 0.5) * 200; // 0-100, где 100 = очень стабильный
+    
+    // 2. Стабильность по фор (дисперсия)
+    const meanHandicap = games.reduce((s, g) => s + g.handicap, 0) / games.length;
+    const variance = games.reduce((s, g) => s + (g.handicap - meanHandicap) ** 2, 0) / games.length;
+    const handicapStability = Math.max(0, 100 - Math.sqrt(variance) * 8); // 0-100
+    
+    // 3. Стабильность по времени (последние игры важнее)
+    const recentGames = games.slice(0, Math.min(3, games.length));
+    const recentWinRate = recentGames.filter(g => g.win).length / recentGames.length;
+    const timeStability = Math.abs(recentWinRate - winRate) * 100; // 0-100, где 100 = стабильный
+    
+    // 4. Комбинированная стабильность
+    const combined = (resultStability * 0.4 + handicapStability * 0.4 + timeStability * 0.2);
+    return Math.round(Math.max(0, Math.min(100, combined)));
   }
 
   // --- Подсчёт сухих побед/поражений ---
@@ -296,7 +355,124 @@
     return games.slice(0, 10).map(g => (g.win ? "🟢" : "🔴")).join(" ");
   }
 
-  // --- Предсказание вероятностей ---
+
+  // --- Система Red Flags ---
+  function redFlagsSimple(matchesA, matchesB, nameA, nameB, cfg = {}) {
+    const C = Object.assign({
+      BIG_MARGIN: 6,
+      H2H_MIN_SETS: 7,
+      H2H_BAL_LOW: 0.40,
+      H2H_BAL_HIGH: 0.60,
+      H2H_EDGE: 0.35,
+      DECIDERS_PER_PLAYER: 2,
+      DECIDERS_TOTAL: 3,
+      useStyleVsForm: true
+    }, cfg);
+
+    const isDecider = (m) => {
+      const a = m.sets.filter(([x,y]) => x>y).length;
+      const b = m.sets.length - a;
+      return (a===3 && b===2) || (b===3 && a===2);
+    };
+    
+    const playerSetDiffs = (matches, player) => {
+      let diffs = [];
+      for (const m of matches) {
+        const meHome = m.home === player, meAway = m.away === player;
+        if (!meHome && !meAway) continue;
+        for (const [h,a] of m.sets) {
+          const my = meHome ? h : a;
+          const opp = meHome ? a : h;
+          diffs.push(my - opp);
+        }
+      }
+      return diffs;
+    };
+    
+    const bigSwingFlag = (matches, player, big=C.BIG_MARGIN) => {
+      let hasBigWin=false, hasBigLoss=false, bonusInOneMatch=0;
+      for (const m of matches) {
+        const meHome = m.home === player || m.away === player;
+        if (!meHome) continue;
+        let winBig=false, loseBig=false;
+        for (const [h,a] of m.sets) {
+          const my = (m.home===player) ? h : a;
+          const op = (m.home===player) ? a : h;
+          const d = my - op;
+          if (d >=  big) winBig = true;
+          if (d <= -big) loseBig = true;
+        }
+        if (winBig) hasBigWin = true;
+        if (loseBig) hasBigLoss = true;
+        if (winBig && loseBig) bonusInOneMatch += 1;
+      }
+      return {flag: (hasBigWin && hasBigLoss), bonus: bonusInOneMatch};
+    };
+
+    const countDeciders = (matches) => matches.reduce((s,m)=> s + (isDecider(m)?1:0), 0);
+
+    // H2H внутри последних 5+5
+    const h2h = [];
+    for (const m of [...matchesA, ...matchesB]) {
+      const pa = (m.home===nameA && m.away===nameB);
+      const pb = (m.home===nameB && m.away===nameA);
+      if (pa || pb) h2h.push(m);
+    }
+    let S_A=0, S_B=0;
+    for (const m of h2h) {
+      for (const [h,a] of m.sets) {
+        if (m.home===nameA) { S_A += (h>a)?1:0; S_B += (a>h)?1:0; }
+        else               { S_A += (a>h)?1:0; S_B += (h>a)?1:0; }
+      }
+    }
+    const pH2H = (S_A + 1) / (S_A + S_B + 2);
+    const h2hSets = S_A + S_B;
+
+    // форма по сетам за 5 матчей
+    const diffsA = playerSetDiffs(matchesA, nameA);
+    const diffsB = playerSetDiffs(matchesB, nameB);
+    const setsWonA = diffsA.filter(d=>d>0).length, setsLostA = diffsA.filter(d=>d<0).length;
+    const setsWonB = diffsB.filter(d=>d>0).length, setsLostB = diffsB.filter(d=>d<0).length;
+    const formA = (setsWonA + 1) / (setsWonA + setsLostA + 2);
+    const formB = (setsWonB + 1) / (setsWonB + setsLostB + 2);
+
+    // Флаги
+    let F4 = false;
+    if (h2hSets >= C.H2H_MIN_SETS) {
+      const balanced = (pH2H >= C.H2H_BAL_LOW && pH2H <= C.H2H_BAL_HIGH);
+      const edgy = (pH2H <= C.H2H_EDGE || pH2H >= 1 - C.H2H_EDGE);
+      const styleVsForm =
+        C.useStyleVsForm &&
+        ((pH2H < 0.5 && formA >= formB) || (pH2H > 0.5 && formB >= formA));
+      F4 = balanced || (edgy && styleVsForm);
+    }
+
+    const decA = countDeciders(matchesA);
+    const decB = countDeciders(matchesB);
+    const F5 = (decA >= C.DECIDERS_PER_PLAYER) || (decB >= C.DECIDERS_PER_PLAYER) || ((decA + decB) >= C.DECIDERS_TOTAL);
+
+    const swingA = bigSwingFlag(matchesA, nameA, C.BIG_MARGIN);
+    const swingB = bigSwingFlag(matchesB, nameB, C.BIG_MARGIN);
+    const F6 = swingA.flag || swingB.flag;
+    const swingBonus = swingA.bonus + swingB.bonus;
+
+    const riskScore = (F4 ? 2 : 0) + (F5 ? 1 : 0) + (F6 ? 1 : 0) + Math.min(1, swingBonus);
+    const skip = (F4 || ((F5 ? 1:0) + (F6 ? 1:0) >= 2) || riskScore >= 3);
+
+    return {
+      flags: { F4_h2h_style: F4, F5_deciders: F5, F6_swings: F6 },
+      riskScore,
+      skip,
+      details: {
+        h2h_sets_total: h2hSets, pH2H,
+        deciders_A: decA, deciders_B: decB,
+        form_setshare_A: formA, form_setshare_B: formB,
+        swing_bonus_in_one_match: swingBonus
+      }
+    };
+  }
+
+  // --- Предсказание вероятностей (обновлённая функция) ---
   function predictAllScores(p) {
     const q = 1 - p;
     const scores = {
@@ -357,16 +533,58 @@
     return [Math.exp(best[0]), Math.exp(best[1])];
   }
 
-  // --- Вероятности BT ---
-  function calcBTScoreProbs(pA, pB) {
-    return [
-      { score: "3:0", probability: (Math.pow(pA, 3) * 100).toFixed(1) + "%" },
-      { score: "3:1", probability: (3 * Math.pow(pA, 3) * pB * 100).toFixed(1) + "%" },
-      { score: "3:2", probability: (6 * Math.pow(pA, 3) * Math.pow(pB, 2) * 100).toFixed(1) + "%" },
-      { score: "0:3", probability: (Math.pow(pB, 3) * 100).toFixed(1) + "%" },
-      { score: "1:3", probability: (3 * Math.pow(pB, 3) * pA * 100).toFixed(1) + "%" },
-      { score: "2:3", probability: (6 * Math.pow(pB, 3) * Math.pow(pA, 2) * 100).toFixed(1) + "%" },
+  // --- Утилиты для BT-модели ---
+  const clamp01 = x => Math.min(1 - 1e-12, Math.max(1e-12, x));
+  const logit = p => Math.log(p / (1 - p));
+  const invLogit = z => 1 / (1 + Math.exp(-z));
+
+  /** Калибровка вероятности (стяжка к 0.5 для избежания завышения) */
+  function calibrate(pRaw, temperature = 1.15) {
+    const p = clamp01(pRaw);
+    if (temperature <= 1) return p;
+    return invLogit(logit(p) / temperature);
+  }
+
+  /** Распределение счётов Bo5 (до 3 побед) из вероятности сета pSetA */
+  function btScoreProbsBO5(pSetA, playerA = "A", playerB = "B", temperature = 1.15) {
+    const p = calibrate(pSetA, temperature);
+    const q = 1 - p;
+
+    // коэффициенты для отрицательной биномиали (T=3): C(2+k, k)
+    const P30 = Math.pow(p, 3);           // 3:0
+    const P31 = 3 * Math.pow(p, 3) * q;   // 3:1
+    const P32 = 6 * Math.pow(p, 3) * q*q; // 3:2
+    const P03 = Math.pow(q, 3);           // 0:3
+    const P13 = 3 * Math.pow(q, 3) * p;   // 1:3
+    const P23 = 6 * Math.pow(q, 3) * p*p; // 2:3
+
+    const rows = [
+      { score: "3:0", prob: P30, label: `${playerA} 3:0 ${playerB}` },
+      { score: "3:1", prob: P31, label: `${playerA} 3:1 ${playerB}` },
+      { score: "3:2", prob: P32, label: `${playerA} 3:2 ${playerB}` },
+      { score: "0:3", prob: P03, label: `${playerB} 3:0 ${playerA}` },
+      { score: "1:3", prob: P13, label: `${playerB} 3:1 ${playerA}` },
+      { score: "2:3", prob: P23, label: `${playerB} 3:2 ${playerA}` },
     ];
+
+    // нормировка (на всякий случай из-за округлений)
+    const total = rows.reduce((s, r) => s + r.prob, 0);
+    return rows
+      .map(r => ({
+        score: r.score,
+        probability: r.prob / total,
+        label: `${r.label} — ${((r.prob / total) * 100).toFixed(1)}%`
+      }))
+      .sort((a, b) => b.probability - a.probability);
+  }
+
+  // --- Вероятности BT (обновлённая функция) ---
+  function calcBTScoreProbs(pA, pB) {
+    const scores = btScoreProbsBO5(pA, "A", "B", 1.15);
+    return scores.map(item => ({
+      score: item.score,
+      probability: (item.probability * 100).toFixed(1) + "%"
+    }));
   }
 
   // --- Индикатор уверенности ---
@@ -375,6 +593,16 @@
     if (maxP > 0.75 && Math.min(vA, vB) < 8 && hTot >= 3) return "🟢";
     if (maxP > 0.65 && Math.min(vA, vB) < 12) return "🟡";
     return "🔴";
+  }
+
+
+  // --- Преобразование данных для red flags ---
+  function convertToRedFlagsFormat(games, playerName) {
+    return games.map(game => ({
+      home: playerName,
+      away: "Opponent", // будет заменено в основной функции
+      sets: game.pts || []
+    }));
   }
 
   // --- Основной анализ ---
@@ -448,6 +676,16 @@
     const KUmodPlayerA = calculatePersistenceMod(playerAMatchRawScores);
     const KUmodPlayerB = calculatePersistenceMod(playerBMatchRawScores);
 
+    // --- Red Flags анализ ---
+    let redFlags = null;
+    try {
+      const matchesA = convertToRedFlagsFormat(A.games, A.player);
+      const matchesB = convertToRedFlagsFormat(B.games, B.player);
+      redFlags = redFlagsSimple(matchesA, matchesB, A.player, B.player);
+    } catch (error) {
+      console.warn("Ошибка в red flags анализе:", error);
+    }
+
     return {
       success: true,
       data: {
@@ -456,7 +694,7 @@
           strength: (50 + 50 * sA).toFixed(1),
           probability: (probFinal * 100).toFixed(1),
           h2h: `${h2hData.wA}-${h2hData.wB}`,
-          stability: calcStability(vA),
+          stability: calcStability(A.games),
           s2: calcBaseS(A.games, 2).toFixed(3),
           s5: calcBaseS(A.games, 5).toFixed(3),
           dryWins: calcDryGames(A.games).wins,
@@ -472,7 +710,7 @@
           strength: (50 + 50 * sB).toFixed(1),
           probability: ((1 - probFinal) * 100).toFixed(1),
           h2h: `${h2hData.wB}-${h2hData.wA}`,
-          stability: calcStability(vB),
+          stability: calcStability(B.games),
           s2: calcBaseS(B.games, 2).toFixed(3),
           s5: calcBaseS(B.games, 5).toFixed(3),
           dryWins: calcDryGames(B.games).wins,
@@ -497,9 +735,17 @@
           visualization: probFinal > 0.5
             ? createMatchVisualization(h2hData.h2hGames)
             : createMatchVisualization(h2hData.h2hGames.map(g => ({ win: 1 - g.win }))),
+          setWins: h2hData.h2hSetWins
         },
         formChartData: {},
         h2hChartData: {},
+        // Red Flags данные
+        redFlags: redFlags ? {
+          skip: redFlags.skip,
+          riskScore: redFlags.riskScore,
+          flags: redFlags.flags,
+          details: redFlags.details
+        } : null,
       },
     };
   }

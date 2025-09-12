@@ -16,6 +16,25 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function makeRecommendation(d) {
+    // Проверяем red flags
+    if (d.redFlags && d.redFlags.skip) {
+      const flags = d.redFlags.flags;
+      const riskScore = d.redFlags.riskScore;
+      let flagReasons = [];
+      
+      if (flags.F4_h2h_style) flagReasons.push("H2H стиль");
+      if (flags.F5_deciders) flagReasons.push("частые 3:2");
+      if (flags.F6_swings) flagReasons.push("качели по сетам");
+      
+      return {
+        verdictText: `🚩 RED FLAG: Избегать ставок!\nРиск: ${riskScore}/5\nПричины: ${flagReasons.join(', ')}`,
+        favorite: null,
+        favScore: 0,
+        totalWeight: 0,
+        isRedFlag: true
+      };
+    }
+
     const pa = parseFloat(d.playerA.probability);
     const pb = parseFloat(d.playerB.probability);
     const sa = parseFloat(d.playerA.strength);
@@ -82,7 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
       favScore = 0;
     }
 
-    return { verdictText, favorite, favScore, totalWeight };
+    return { verdictText, favorite, favScore, totalWeight, isRedFlag: false };
   }
 
   function fillRecommendationBlock(d) {
@@ -91,33 +110,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const rec = makeRecommendation(d);
 
-    let confidenceHTML = '';
-    if (rec.favorite) {
-      const percent = ((rec.favScore / rec.totalWeight) * 100).toFixed(1);
-      confidenceHTML = `
-        <div style="margin-top:6px; font-size: 12px; font-weight: 600; color: #8ab4f8;">
-          Индикатор уверенности: <strong>${rec.favScore.toFixed(2)}</strong> / <em>${rec.totalWeight.toFixed(2)}</em> (${percent}%)
-        </div>`;
+    if (rec.isRedFlag) {
+      // Для red flags показываем только основное сообщение
+      recBlock.style.background = 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)';
+    } else if (rec.favorite) {
+      recBlock.style.background = 'linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%)';
+    } else {
+      recBlock.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
     }
 
     recBlock.innerHTML = `
       <pre style="margin:0; white-space: pre-wrap; font-weight: 700; font-size: 14px; color:#dbe7ff;">${rec.verdictText}</pre>
-      ${confidenceHTML}
     `;
   }
 
   function fillTop3Tables(d) {
-    const topGeneralScoresBody = document.getElementById('topGeneralScoresBody');
-    if (topGeneralScoresBody && d.predictedScores && Array.isArray(d.predictedScores)) {
-      const top3general = [...d.predictedScores]
-        .sort((a, b) => parseFloat(b.probability) - parseFloat(a.probability))
-        .slice(0, 3);
-
-      topGeneralScoresBody.innerHTML = top3general.map(item =>
-        `<tr><td>${item.score}</td><td>${parseFloat(item.probability).toFixed(1)}%</td></tr>`
-      ).join('');
-    }
-
     const topBTScoresBody = document.getElementById('topBTScoresBody');
     if (topBTScoresBody && d.btScoreProbs && Array.isArray(d.btScoreProbs)) {
       const top3bt = [...d.btScoreProbs]
@@ -131,32 +138,82 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function fillMainTable(data) {
-    const isFavA = parseFloat(data.playerA.probability) > 50;
-    document.getElementById('mainTableBody').innerHTML = `
-      <tr style="background-color: ${isFavA ? 'rgba(54, 162, 235, 0.12)' : 'transparent'}; text-align:center;">
-        <td style="text-align:left; padding-left:10px;">${data.playerA.name}</td>
-        <td>${data.playerA.strength}</td>
-        <td>${data.playerA.probability}%</td>
-        <td>${data.playerA.h2h}</td>
-        <td>${data.playerA.stability}/100</td>
-      </tr>
-      <tr style="background-color: ${!isFavA ? 'rgba(255, 99, 132, 0.12)' : 'transparent'}; text-align:center;">
-        <td style="text-align:left; padding-left:10px;">${data.playerB.name}</td>
-        <td>${data.playerB.strength}</td>
-        <td>${data.playerB.probability}%</td>
-        <td>${data.playerB.h2h}</td>
-        <td>${data.playerB.stability}/100</td>
-      </tr>
-    `;
+    // Заполняем карточки игроков
+    const playerAName = document.getElementById('playerAName');
+    const playerBName = document.getElementById('playerBName');
+    const playerAStrength = document.getElementById('playerAStrength');
+    const playerBStrength = document.getElementById('playerBStrength');
+    const playerAProbability = document.getElementById('playerAProbability');
+    const playerBProbability = document.getElementById('playerBProbability');
+    const playerAH2H = document.getElementById('playerAH2H');
+    const playerBH2H = document.getElementById('playerBH2H');
+    const playerAStability = document.getElementById('playerAStability');
+    const playerBStability = document.getElementById('playerBStability');
+    const playerAStatus = document.getElementById('playerAStatus');
+    const playerBStatus = document.getElementById('playerBStatus');
+    const playerACard = document.getElementById('playerACard');
+    const playerBCard = document.getElementById('playerBCard');
+
+    if (playerAName) playerAName.textContent = data.playerA.name;
+    if (playerBName) playerBName.textContent = data.playerB.name;
+    if (playerAStrength) playerAStrength.textContent = data.playerA.strength;
+    if (playerBStrength) playerBStrength.textContent = data.playerB.strength;
+    if (playerAProbability) playerAProbability.textContent = data.playerA.probability + '%';
+    if (playerBProbability) playerBProbability.textContent = data.playerB.probability + '%';
+    if (playerAH2H) playerAH2H.textContent = data.playerA.h2h;
+    if (playerBH2H) playerBH2H.textContent = data.playerB.h2h;
+    if (playerAStability) playerAStability.textContent = data.playerA.stability + '/100';
+    if (playerBStability) playerBStability.textContent = data.playerB.stability + '/100';
+
+    // Определяем фаворита
+    const probA = parseFloat(data.playerA.probability);
+    const probB = parseFloat(data.playerB.probability);
+    const isFavA = probA > probB;
+    const probDiff = Math.abs(probA - probB);
+
+    // Устанавливаем статусы и стили
+    if (isFavA) {
+      if (playerAStatus) {
+        playerAStatus.textContent = 'ФАВОРИТ';
+        playerAStatus.className = 'player-status favorite';
+      }
+      if (playerBStatus) {
+        playerBStatus.textContent = probDiff > 10 ? 'АУТСАЙДЕР' : 'СОПЕРНИК';
+        playerBStatus.className = 'player-status underdog';
+      }
+      if (playerACard) playerACard.className = 'player-card favorite';
+      if (playerBCard) playerBCard.className = 'player-card underdog';
+    } else {
+      if (playerAStatus) {
+        playerAStatus.textContent = probDiff > 10 ? 'АУТСАЙДЕР' : 'СОПЕРНИК';
+        playerAStatus.className = 'player-status underdog';
+      }
+      if (playerBStatus) {
+        playerBStatus.textContent = 'ФАВОРИТ';
+        playerBStatus.className = 'player-status favorite';
+      }
+      if (playerACard) playerACard.className = 'player-card underdog';
+      if (playerBCard) playerBCard.className = 'player-card favorite';
+    }
   }
 
   function fillStatsTables(data) {
     document.getElementById('statName1').textContent = data.playerA.name;
     document.getElementById('statName2').textContent = data.playerB.name;
-    document.getElementById('s2Player1').textContent = data.playerA.s2;
-    document.getElementById('s2Player2').textContent = data.playerB.s2;
-    document.getElementById('s5Player1').textContent = data.playerA.s5;
-    document.getElementById('s5Player2').textContent = data.playerB.s5;
+    
+    // Преобразуем S₂ и S₅ в более понятный формат
+    const formatStrength = (value) => {
+      const num = parseFloat(value);
+      if (isNaN(num)) return '-';
+      if (num > 0) return `+${num.toFixed(3)}`;
+      return num.toFixed(3);
+    };
+    
+    document.getElementById('s2Player1').textContent = formatStrength(data.playerA.s2);
+    document.getElementById('s2Player2').textContent = formatStrength(data.playerB.s2);
+    document.getElementById('s5Player1').textContent = formatStrength(data.playerA.s5);
+    document.getElementById('s5Player2').textContent = formatStrength(data.playerB.s5);
+    
     document.getElementById('dryWins1').textContent = data.playerA.dryWins;
     document.getElementById('dryWins2').textContent = data.playerB.dryWins;
     document.getElementById('dryLosses1').textContent = data.playerA.dryLosses;
@@ -219,37 +276,45 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const tbody = document.getElementById('setsTableBody');
     tbody.innerHTML = '';
+    
+    // Основные данные по каждому сету
     if (data.playerA.setWins) {
       Object.entries(data.playerA.setWins).forEach(([set, [p1Val]]) => {
         const p2Val = data.playerB.setWins && data.playerB.setWins[set] ? data.playerB.setWins[set][0] : '-';
         tbody.insertAdjacentHTML('beforeend', `<tr><td>${set.replace('set', '')}</td><td>${p1Val}</td><td>${p2Val}</td></tr>`);
       });
     }
-  }
-
-  function fillScoreDetails(data) {
-    const scoreTableBody = document.getElementById('scoreTableBody');
-    if (scoreTableBody && data.predictedScores) {
-      scoreTableBody.innerHTML = '';
-      data.predictedScores.forEach((item, index) => {
-        const row = document.createElement('tr');
-        if(index === 0) row.style.fontWeight = 'bold';
-        row.innerHTML = `<td>${item.score}</td><td>${item.probability}</td>`;
-        scoreTableBody.appendChild(row);
+    
+    // H2H данные по каждому сету (если есть)
+    if (data.h2h && data.h2h.setWins) {
+      // Рассчитываем суммарные H2H показатели
+      const h2hP1Total = Object.values(data.h2h.setWins.playerA || {}).reduce((sum, [val]) => {
+        const [won, total] = val.split('/').map(Number);
+        return sum + (total || 0);
+      }, 0);
+      const h2hP1Won = Object.values(data.h2h.setWins.playerA || {}).reduce((sum, [val]) => {
+        const [won, total] = val.split('/').map(Number);
+        return sum + (won || 0);
+      }, 0);
+      const h2hP2Total = Object.values(data.h2h.setWins.playerB || {}).reduce((sum, [val]) => {
+        const [won, total] = val.split('/').map(Number);
+        return sum + (total || 0);
+      }, 0);
+      const h2hP2Won = Object.values(data.h2h.setWins.playerB || {}).reduce((sum, [val]) => {
+        const [won, total] = val.split('/').map(Number);
+        return sum + (won || 0);
+      }, 0);
+      
+      // Показываем суммарные H2H в заголовочной строке
+      tbody.insertAdjacentHTML('beforeend', `<tr style="border-top: 2px solid #e2e8f0; background-color: #f8fafc;"><td><strong>H2H</strong></td><td><strong>${h2hP1Won}/${h2hP1Total}</strong></td><td><strong>${h2hP2Won}/${h2hP2Total}</strong></td></tr>`);
+      
+      Object.entries(data.h2h.setWins.playerA || {}).forEach(([set, [p1Val]]) => {
+        const p2Val = data.h2h.setWins.playerB && data.h2h.setWins.playerB[set] ? data.h2h.setWins.playerB[set][0] : '-';
+        tbody.insertAdjacentHTML('beforeend', `<tr style="background-color: #f8fafc;"><td><strong>${set.replace('set', '')}</strong></td><td><strong>${p1Val}</strong></td><td><strong>${p2Val}</strong></td></tr>`);
       });
     }
-
-    const btScoreTableBody = document.getElementById('btScoreTableBody');
-    if (btScoreTableBody && Array.isArray(data.btScoreProbs)) {
-      btScoreTableBody.innerHTML = '';
-      data.btScoreProbs.forEach((row, idx) => {
-        const tr = document.createElement('tr');
-        if(idx === 0) tr.style.fontWeight = 'bold';
-        tr.innerHTML = `<td>${row.score}</td><td>${row.probability}</td>`;
-        btScoreTableBody.appendChild(tr);
-      });
-    }
   }
+
 
   function setError(message) {
     loading.classList.add('hidden');
@@ -283,7 +348,6 @@ document.addEventListener('DOMContentLoaded', () => {
           fillKUBlock(d);
           fillVisualization(d);
           fillSetsTable(d);
-          fillScoreDetails(d);
           if(results) results.classList.remove('hidden');
         } catch (e) {
           setError('Ошибка: ' + e.message);

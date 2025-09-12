@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Tennis Analysis Pro",
-  "version": "1.0",
+  "version": "1.1",
   "description": "Анализатор теннисных матчей.",
   "permissions": [
     "activeTab",
