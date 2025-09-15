@@ -13,10 +13,13 @@
   "action": {
     "default_popup": "popup.html"
   },
+  "background": {
+    "service_worker": "background.js"
+  },
   "content_scripts": [
     {
       "matches": ["*://*.betcity.ru/*"],
-      "js": ["content.js"]
+      "js": ["bradley-terry.js", "content.js"]
     }
   ],
   "content_security_policy": {

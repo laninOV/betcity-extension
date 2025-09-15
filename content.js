@@ -69,7 +69,7 @@
       h2hGames.push({ win: aWon ? 1 : 0, date: dt, pts: sets });
     });
     
-    // Преобразуем данные в формат setWins
+    // Преобразуем данные в формат setWins с дополнительной детализацией
     const h2hSetWins = {
       playerA: Object.fromEntries(
         Object.entries(h2hSetData.playerA).map(([set, data]) => [
@@ -82,7 +82,17 @@
           set, 
           [`${data.win}/${data.total}`, `${data.total - data.win}/${data.total}`]
         ])
-      )
+      ),
+      // Дополнительная детализация для каждого сета
+      detailed: {
+        playerA: h2hSetData.playerA,
+        playerB: h2hSetData.playerB,
+        summary: {
+          totalSets: Object.values(h2hSetData.playerA).reduce((sum, data) => sum + data.total, 0),
+          playerAWins: Object.values(h2hSetData.playerA).reduce((sum, data) => sum + data.win, 0),
+          playerBWins: Object.values(h2hSetData.playerB).reduce((sum, data) => sum + data.win, 0)
+        }
+      }
     };
     
     return { wA, wB, total: wA + wB, h2hGames, dryWinsA: dryA, dryWinsB: dryB, h2hSetWins };
@@ -118,69 +128,9 @@
     return pSum / (pSum + oSum);
   }
 
-  // --- Старая формула коэффициента упорства (для совместимости) ---
-  function calculatePersistenceCoefficient(matchScores) {
-    if (!matchScores || !matchScores.length) return 0;
-    let matchRatios = [];
-    let matchWins = [];
-    for (const match of matchScores) {
-      const sets = match.match(/(\d+):(\d+)/g)?.map(s => s.split(':').map(Number)) || [];
-      if (!sets.length) continue;
-      let ratios = [], wonSet = false;
-      for (const [p1, p2] of sets) {
-        const total = p1 + p2;
-        if (total === 0) continue;
-        ratios.push(p1 / total);
-        if (p1 > p2) wonSet = true;
-      }
-      if (!ratios.length) continue;
-      matchRatios.push(ratios.reduce((a,b) => a+b, 0) / ratios.length);
-      matchWins.push(wonSet);
-    }
-    if (!matchRatios.length) return 0;
-    const avgRatio = matchRatios.reduce((a,b) => a+b, 0) / matchRatios.length;
-    const winRate = matchWins.filter(v => v).length / matchWins.length;
-    return +(avgRatio * winRate).toFixed(4);
-  }
 
-  // --- Новая модернизированная формула коэффициента упорства ---
-  function calculatePersistenceMod(matchScoresList, bigLossThreshold = 0.4) {
-    if (!Array.isArray(matchScoresList) || !matchScoresList.length) return 0;
 
-    function parseSetScores(scoreStr) {
-      const matches = scoreStr.match(/(\d+):(\d+)/g);
-      if (!matches) return [];
-      return matches.map(pair => pair.split(':').map(Number));
-    }
 
-    const allMatchCoefficients = [];
-
-    for (const scoreStr of matchScoresList) {
-      const sets = parseSetScores(scoreStr);
-      const n = sets.length;
-      if (!n) continue;
-
-      let pointsRatios = [], setsWon = 0, bigLosses = 0;
-
-      for (const [playerPoints, oppPoints] of sets) {
-        const totalPoints = playerPoints + oppPoints;
-        let ratio = totalPoints ? playerPoints / totalPoints : 0;
-        pointsRatios.push(ratio);
-        if (playerPoints > oppPoints) setsWon++;
-        if (ratio < bigLossThreshold) bigLosses++;
-      }
-      const avgPointsRatio = pointsRatios.reduce((a, b) => a + b, 0) / n;
-      const w = setsWon / n;
-      const s = bigLosses / n;
-      const l = n >= 4 ? 1.0 : 0.7;
-
-      const matchCoef = avgPointsRatio * w * (1 - s) * l;
-      allMatchCoefficients.push(matchCoef);
-    }
-    if (!allMatchCoefficients.length) return 0;
-
-    return +(allMatchCoefficients.reduce((a, b) => a + b, 0) / allMatchCoefficients.length).toFixed(4);
-  }
 
   // --- Подсчёт выигрышей сетов ---
   function calcSetWins(games) {
@@ -284,15 +234,17 @@
     return { player: header, games };
   }
 
-  // --- Вычисление базовой силы ---
+  // --- Базовое вычисление силы (оригинальная формула) ---
   function calcBaseS(games, limit = null) {
     const arr = limit ? games.slice(0, limit) : games;
+    if (!arr.length) return 0;
+    
     let num = 0, den = 0;
     arr.forEach(g => {
-      const stabilityFactor = 1 / (1 + g.diffDays / 30);
-      num += g.w * g.Mi * stabilityFactor;
-      den += g.w * stabilityFactor;
+      num += g.w * g.Mi;
+      den += g.w;
     });
+    
     return den ? num / den : 0;
   }
 
@@ -312,33 +264,116 @@
     return Math.sqrt(variance);
   }
 
-  // --- Скорректированная сила ---
+  // --- Модернизированная скорректированная сила ---
   function strengthAdj(games) {
-    const s = calcBaseS(games);
-    const foraB = calcForaBalance(games);
-    return s + 0.25 * foraB;
+    if (!games.length) return 0;
+    
+    const baseStrength = calcBaseS(games);
+    const foraBalance = calcForaBalance(games);
+    
+    // Фактор последних результатов (форма)
+    const recentGames = games.slice(0, Math.min(3, games.length));
+    const recentForm = recentGames.length > 0 ? 
+      recentGames.reduce((sum, g) => sum + (g.win ? 1 : -0.5), 0) / recentGames.length : 0;
+    
+    // Фактор стабильности результатов
+    const results = games.slice(0, 5).map(g => g.win ? 1 : 0);
+    const winRate = results.length > 0 ? results.reduce((a, b) => a + b, 0) / results.length : 0.5;
+    const variance = results.length > 1 ? 
+      results.reduce((sum, r) => sum + Math.pow(r - winRate, 2), 0) / results.length : 0;
+    const consistencyFactor = Math.max(0, 1 - variance * 2); // 0-1, где 1 = очень стабильный
+    
+    // Фактор качества игры (средний handicap в победах)
+    const wins = games.filter(g => g.win);
+    const qualityFactor = wins.length > 0 ? 
+      Math.tanh(wins.reduce((sum, g) => sum + g.handicap, 0) / (wins.length * cfg.fMax)) : 0;
+    
+    // Фактор опыта против сильных соперников
+    const avgOppStrength = games.length > 0 ? 
+      games.reduce((sum, g) => sum + Math.abs(g.handicap), 0) / games.length : 0;
+    const experienceFactor = Math.tanh(avgOppStrength / cfg.fMax) * 0.1;
+    
+    // Комбинированная сила с адаптивными весами
+    const adjustedStrength = baseStrength + 
+      0.2 * foraBalance +           // Баланс фор
+      0.15 * recentForm +           // Текущая форма
+      0.1 * consistencyFactor +     // Стабильность
+      0.1 * qualityFactor +         // Качество игры
+      experienceFactor;             // Опыт против сильных
+    
+    return adjustedStrength;
   }
 
-  // --- Стабильность (улучшенный расчет) ---
+  // --- Улучшенная стабильность ---
   function calcStability(games) {
     if (!games.length) return 0;
     
-    // 1. Стабильность по результатам (процент побед)
-    const winRate = games.filter(g => g.win).length / games.length;
-    const resultStability = Math.abs(winRate - 0.5) * 200; // 0-100, где 100 = очень стабильный
+    // 1. Стабильность результатов с учетом качества побед
+    const results = games.map(g => {
+      if (g.win) {
+        // Качественные победы дают больше очков стабильности
+        if (g.playerSets === 3 && g.oppSets === 0) return 1.0;
+        if (g.playerSets === 3 && g.oppSets === 1) return 0.8;
+        if (g.playerSets === 3 && g.oppSets === 2) return 0.6;
+      } else {
+        // Близкие поражения менее негативны для стабильности
+        if (g.oppSets === 3 && g.playerSets === 2) return -0.3;
+        if (g.oppSets === 3 && g.playerSets === 1) return -0.6;
+        if (g.oppSets === 3 && g.playerSets === 0) return -1.0;
+      }
+      return 0;
+    });
     
-    // 2. Стабильность по фор (дисперсия)
-    const meanHandicap = games.reduce((s, g) => s + g.handicap, 0) / games.length;
-    const variance = games.reduce((s, g) => s + (g.handicap - meanHandicap) ** 2, 0) / games.length;
-    const handicapStability = Math.max(0, 100 - Math.sqrt(variance) * 8); // 0-100
+    const avgResult = results.reduce((a, b) => a + b, 0) / results.length;
+    const resultVariance = results.reduce((sum, r) => sum + Math.pow(r - avgResult, 2), 0) / results.length;
+    const resultStability = Math.max(0, 100 - Math.sqrt(resultVariance) * 50);
     
-    // 3. Стабильность по времени (последние игры важнее)
-    const recentGames = games.slice(0, Math.min(3, games.length));
-    const recentWinRate = recentGames.filter(g => g.win).length / recentGames.length;
-    const timeStability = Math.abs(recentWinRate - winRate) * 100; // 0-100, где 100 = стабильный
+    // 2. Стабильность по качеству игры (handicap)
+    const handicaps = games.map(g => g.handicap);
+    const meanHandicap = handicaps.reduce((a, b) => a + b, 0) / handicaps.length;
+    const handicapVariance = handicaps.reduce((sum, h) => sum + Math.pow(h - meanHandicap, 2), 0) / handicaps.length;
+    const handicapStability = Math.max(0, 100 - Math.sqrt(handicapVariance) * 6);
     
-    // 4. Комбинированная стабильность
-    const combined = (resultStability * 0.4 + handicapStability * 0.4 + timeStability * 0.2);
+    // 3. Стабильность формы (последние vs общие результаты)
+    const recentGames = games.slice(0, Math.min(4, games.length));
+    const recentAvg = recentGames.length > 0 ? 
+      recentGames.reduce((sum, g) => sum + (g.win ? 1 : 0), 0) / recentGames.length : 0.5;
+    const overallWinRate = games.filter(g => g.win).length / games.length;
+    const formStability = Math.max(0, 100 - Math.abs(recentAvg - overallWinRate) * 200);
+    
+    // 4. Стабильность по сетам (насколько стабильно выигрывает/проигрывает сеты)
+    let setStability = 50; // базовое значение
+    if (games.length >= 3) {
+      const setResults = [];
+      games.slice(0, 5).forEach(g => {
+        if (g.pts && g.pts.length > 0) {
+          g.pts.forEach(([a, b]) => {
+            setResults.push(a > b ? 1 : 0);
+          });
+        }
+      });
+      
+      if (setResults.length >= 5) {
+        const setWinRate = setResults.reduce((a, b) => a + b, 0) / setResults.length;
+        const setVariance = setResults.reduce((sum, r) => sum + Math.pow(r - setWinRate, 2), 0) / setResults.length;
+        setStability = Math.max(0, 100 - Math.sqrt(setVariance) * 100);
+      }
+    }
+    
+    // Комбинированная стабильность с адаптивными весами
+    const weights = {
+      result: 0.35,
+      handicap: 0.25, 
+      form: 0.25,
+      sets: 0.15
+    };
+    
+    const combined = 
+      resultStability * weights.result +
+      handicapStability * weights.handicap +
+      formStability * weights.form +
+      setStability * weights.sets;
+    
     return Math.round(Math.max(0, Math.min(100, combined)));
   }
 
@@ -349,6 +384,67 @@
       losses: games.filter(g => g.isDryLoss).length,
     };
   }
+
+  // --- Подсчет матчей за день с результатами ---
+  function calcMatchesToday(games) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const todayGames = games.filter(game => {
+      const gameDate = new Date(game.date);
+      gameDate.setHours(0, 0, 0, 0);
+      return gameDate.getTime() === today.getTime();
+    });
+    
+    const wins = todayGames.filter(game => game.win).length;
+    const losses = todayGames.length - wins;
+    
+    return {
+      total: todayGames.length,
+      wins: wins,
+      losses: losses
+    };
+  }
+
+  // --- Система очков за победы/поражения ---
+  function calculateScorePoints(games) {
+    let totalPoints = 0;
+    let matchesAnalyzed = 0;
+    
+    // Берем только последние 5 матчей
+    const recentGames = games.slice(0, 5);
+    
+    recentGames.forEach(game => {
+      if (!game.pts || !Array.isArray(game.pts)) return;
+      
+      const playerSets = game.playerSets || 0;
+      const oppSets = game.oppSets || 0;
+      const isWin = game.win === 1;
+      
+      let points = 0;
+      if (isWin) {
+        // Победы: 3-0 = 3pts, 3-1 = 2pts, 3-2 = 1pt
+        if (playerSets === 3 && oppSets === 0) points = 3;
+        else if (playerSets === 3 && oppSets === 1) points = 2;
+        else if (playerSets === 3 && oppSets === 2) points = 1;
+      } else {
+        // Поражения: 0-3 = -3pts, 1-3 = -2pts, 2-3 = -1pt
+        if (oppSets === 3 && playerSets === 0) points = -3;
+        else if (oppSets === 3 && playerSets === 1) points = -2;
+        else if (oppSets === 3 && playerSets === 2) points = -1;
+      }
+      
+      totalPoints += points;
+      matchesAnalyzed++;
+    });
+    
+    return {
+      totalPoints,
+      matchesAnalyzed,
+      averagePoints: matchesAnalyzed > 0 ? (totalPoints / matchesAnalyzed).toFixed(2) : 0
+    };
+  }
+
 
   // --- Визуализация ---
   function createMatchVisualization(games) {
@@ -489,101 +585,195 @@
     })).sort((a, b) => parseFloat(b.probability) - parseFloat(a.probability));
   }
 
-  // --- Подсчёт сетов для BT модели ---
-  function getSetWeights(games) {
-    const setResults = [];
-    games.forEach(g => {
-      (g.pts || []).forEach(([a, b]) => {
-        setResults.push({
-          winA: a > b ? 1 : 0,
-          winB: a < b ? 1 : 0,
-          weight: Math.log(1 + Math.abs(a - b)),
-        });
-      });
-    });
-    return setResults;
+  // --- Конвертация данных для новой BT модели ---
+  function convertGamesToBTFormat(games, playerName, opponentName = "Opponent") {
+    return games.map(game => ({
+      date: game.date || new Date(),
+      home: playerName,
+      away: opponentName,
+      sets: game.pts || []
+    }));
   }
 
-  // --- Логарифмическая функция правдоподобия для BT ---
-  function negLogLikelihood(log_r, setResults) {
-    const [log_rA, log_rB] = log_r;
-    const rA = Math.exp(log_rA);
-    const rB = Math.exp(log_rB);
-    let ll = 0;
-    setResults.forEach(res => {
-      const p = rA / (rA + rB);
-      const pClip = Math.max(1e-10, Math.min(p, 1 - 1e-10));
-      ll += res.weight * (res.winA * Math.log(pClip) + res.winB * Math.log(1 - pClip));
-    });
-    return -ll;
+  function convertH2HToBTFormat(h2hGames, playerA, playerB) {
+    return h2hGames.map(game => ({
+      date: game.date || new Date(),
+      home: playerA,
+      away: playerB,
+      sets: game.pts || []
+    }));
   }
 
-  // --- Оценка рейтингов Bradley-Terry ---
-  function estimateBradleyTerryRatings(setResults) {
-    let best = null, bestVal = Infinity;
-    for (let log_rA = -2; log_rA <= 2; log_rA += 0.1) {
-      for (let log_rB = -2; log_rB <= 2; log_rB += 0.1) {
-        const val = negLogLikelihood([log_rA, log_rB], setResults);
-        if (val < bestVal) {
-          bestVal = val;
-          best = [log_rA, log_rB];
-        }
-      }
-    }
-    return [Math.exp(best[0]), Math.exp(best[1])];
-  }
-
-  // --- Утилиты для BT-модели ---
+  // --- Утилиты для новой BT-модели ---
   const clamp01 = x => Math.min(1 - 1e-12, Math.max(1e-12, x));
   const logit = p => Math.log(p / (1 - p));
   const invLogit = z => 1 / (1 + Math.exp(-z));
 
-  /** Калибровка вероятности (стяжка к 0.5 для избежания завышения) */
-  function calibrate(pRaw, temperature = 1.15) {
-    const p = clamp01(pRaw);
-    if (temperature <= 1) return p;
-    return invLogit(logit(p) / temperature);
+  function timeWeight(deltaDays, halfLife = 21) { 
+    return halfLife > 0 ? Math.exp(-deltaDays / halfLife) : 1; 
   }
 
-  /** Распределение счётов Bo5 (до 3 побед) из вероятности сета pSetA */
-  function btScoreProbsBO5(pSetA, playerA = "A", playerB = "B", temperature = 1.15) {
-    const p = calibrate(pSetA, temperature);
+  function marginBump(diff, beta = 0.15) { 
+    const m = Math.max(0, Math.min(0.5, (diff - 2) / 9)); 
+    return 1 + beta * m; 
+  }
+
+  // --- Построить локальный граф сетов ---
+  function buildGraph(matches, {halfLife = 21, betaMargin = 0.15, lambdaMatch = 0.7, alphaPrior = 2.0} = {}) {
+    const players = new Set(); 
+    matches.forEach(m => {
+      players.add(m.home); 
+      players.add(m.away);
+    });
+    
+    const ghost = "__BT_GHOST__";
+    const now = matches.reduce((d, m) => !d || m.date > d ? m.date : d, null);
+    const W = new Map(), N = new Map();
+    const K = (i, j) => i + "__" + j;
+    const add = (M, i, j, v) => M.set(K(i, j), (M.get(K(i, j)) || 0) + v);
+
+    for (const m of matches) {
+      const Δ = now && m.date ? Math.max(0, (now - m.date) / (1000 * 3600 * 24)) : 0;
+      const wt = timeWeight(Δ, halfLife);
+      let homeSetsWon = 0;
+      
+      for (const [h, a] of m.sets) {
+        if (h === a) continue;
+        const w = wt * marginBump(Math.abs(h - a), betaMargin);
+        if (h > a) add(W, m.home, m.away, w); 
+        else add(W, m.away, m.home, w);
+        add(N, m.home, m.away, w); 
+        add(N, m.away, m.home, w);
+        if (h > a) homeSetsWon++;
+      }
+      
+      const awaySetsWon = m.sets.length - homeSetsWon;
+      if (homeSetsWon !== awaySetsWon) {
+        const winner = homeSetsWon > awaySetsWon ? m.home : m.away;
+        const loser = winner === m.home ? m.away : m.home;
+        add(W, winner, loser, lambdaMatch * wt);
+        add(N, winner, loser, lambdaMatch * wt);
+        add(N, loser, winner, lambdaMatch * wt);
+      }
+    }
+    
+    // Регуляризация призрачным игроком
+    for (const p of players) {
+      add(W, p, ghost, alphaPrior);
+      add(W, ghost, p, alphaPrior);
+      add(N, p, ghost, 2 * alphaPrior);
+      add(N, ghost, p, 2 * alphaPrior);
+    }
+    players.add(ghost);
+    
+    return {players: [...players], W, N, ghost};
+  }
+
+  // --- MM-итерации BT ---
+  function btRatings(graph, {maxIter = 1000, tol = 1e-8} = {}) {
+    const {players, W, N} = graph;
+    const r = Object.fromEntries(players.map(p => [p, 1]));
+    const get = (M, i, j) => M.get(i + "__" + j) || 0;
+
+    for (let it = 0; it < maxIter; it++) {
+      const wsum = Object.fromEntries(players.map(p => [p, 0]));
+      const nden = Object.fromEntries(players.map(p => [p, 0]));
+      
+      for (const i of players) {
+        for (const j of players) {
+          if (i === j) continue;
+          const nij = get(N, i, j); 
+          if (nij <= 0) continue;
+          nden[i] += nij / (r[i] + r[j]);
+        }
+      }
+      
+      for (const i of players) {
+        for (const j of players) {
+          if (i === j) continue;
+          const wij = get(W, i, j); 
+          if (wij > 0) wsum[i] += wij;
+        }
+      }
+      
+      let maxRel = 0;
+      for (const p of players) {
+        if (nden[p] > 0) {
+          const newr = Math.max(1e-12, wsum[p] / nden[p]);
+          maxRel = Math.max(maxRel, Math.abs(newr - r[p]) / Math.max(r[p], 1e-12));
+          r[p] = newr;
+        }
+      }
+      if (maxRel < tol) break;
+    }
+    return r;
+  }
+
+  // --- Bo5: распределение и вероятность матча ---
+  function bo5ScoreDist(p) {
+    p = clamp01(p); 
     const q = 1 - p;
+    return {
+      "3:0": p**3,
+      "3:1": 3 * (p**3) * q,
+      "3:2": 6 * (p**3) * (q**2),
+      "0:3": q**3,
+      "1:3": 3 * (q**3) * p,
+      "2:3": 6 * (q**3) * (p**2)
+    };
+  }
 
-    // коэффициенты для отрицательной биномиали (T=3): C(2+k, k)
-    const P30 = Math.pow(p, 3);           // 3:0
-    const P31 = 3 * Math.pow(p, 3) * q;   // 3:1
-    const P32 = 6 * Math.pow(p, 3) * q*q; // 3:2
-    const P03 = Math.pow(q, 3);           // 0:3
-    const P13 = 3 * Math.pow(q, 3) * p;   // 1:3
-    const P23 = 6 * Math.pow(q, 3) * p*p; // 2:3
+  const bo5MatchWin = (p) => { 
+    const d = bo5ScoreDist(p); 
+    return d["3:0"] + d["3:1"] + d["3:2"]; 
+  };
 
-    const rows = [
-      { score: "3:0", prob: P30, label: `${playerA} 3:0 ${playerB}` },
-      { score: "3:1", prob: P31, label: `${playerA} 3:1 ${playerB}` },
-      { score: "3:2", prob: P32, label: `${playerA} 3:2 ${playerB}` },
-      { score: "0:3", prob: P03, label: `${playerB} 3:0 ${playerA}` },
-      { score: "1:3", prob: P13, label: `${playerB} 3:1 ${playerA}` },
-      { score: "2:3", prob: P23, label: `${playerB} 3:2 ${playerA}` },
-    ];
+  const calibrate = (p, t = 1.2) => t <= 1 ? p : invLogit(logit(clamp01(p)) / t);
 
-    // нормировка (на всякий случай из-за округлений)
-    const total = rows.reduce((s, r) => s + r.prob, 0);
-    return rows
-      .map(r => ({
-        score: r.score,
-        probability: r.prob / total,
-        label: `${r.label} — ${((r.prob / total) * 100).toFixed(1)}%`
+  // --- Основной расчёт для пары A–B ---
+  function btWinner(last5A, last5B, h2h, nameA, nameB, hyper = {}) {
+    const H = Object.assign({
+      halfLife: 21, 
+      betaMargin: 0.15, 
+      lambdaMatch: 0.7, 
+      alphaPrior: 2.0, 
+      temperature: 1.2
+    }, hyper);
+    
+    // Один общий граф по 5+5+H2H
+    const graph = buildGraph([...last5A, ...last5B, ...(h2h || [])], H);
+    const r = btRatings(graph);
+    const rA = r[nameA] || 1, rB = r[nameB] || 1;
+
+    const p_set_raw = rA / (rA + rB);
+    const p_set = calibrate(p_set_raw, H.temperature);
+    const p_match = bo5MatchWin(p_set);
+    const dist = bo5ScoreDist(p_set);
+
+    const scores = Object.entries(dist)
+      .map(([score, prob]) => ({
+        score, 
+        probability: prob, 
+        pct: (prob * 100).toFixed(1) + "%"
       }))
       .sort((a, b) => b.probability - a.probability);
+
+    return {
+      favorite: p_match >= 0.5 ? nameA : nameB,
+      ratings: { [nameA]: rA, [nameB]: rB },
+      p_set_raw, 
+      p_set, 
+      p_match,
+      scores
+    };
   }
 
-  // --- Вероятности BT (обновлённая функция) ---
-  function calcBTScoreProbs(pA, pB) {
-    const scores = btScoreProbsBO5(pA, "A", "B", 1.15);
-    return scores.map(item => ({
+  // --- Вероятности BT (обновленная функция) ---
+  function calcBTScoreProbs(btResult) {
+    return btResult.scores.map(item => ({
       score: item.score,
-      probability: (item.probability * 100).toFixed(1) + "%"
+      probability: item.probability,
+      label: item.pct
     }));
   }
 
@@ -595,6 +785,28 @@
     return "🔴";
   }
 
+
+  // --- Улучшенное отображение силы игрока ---
+  function calculateDisplayStrength(rawStrength) {
+    // Преобразуем сырую силу (-∞, +∞) в понятный рейтинг (0-100)
+    // Используем сигмоидальную функцию для более реалистичного масштабирования
+    
+    // Нормализация: большинство игроков должны быть в диапазоне 30-70
+    const normalized = 50 + 25 * Math.tanh(rawStrength * 2);
+    
+    // Дополнительные корректировки для крайних значений
+    let adjusted = normalized;
+    
+    if (rawStrength > 0.5) {
+      // Очень сильные игроки: 75-95
+      adjusted = 75 + 20 * Math.min(1, (rawStrength - 0.5) / 0.5);
+    } else if (rawStrength < -0.5) {
+      // Очень слабые игроки: 5-25
+      adjusted = 25 - 20 * Math.min(1, Math.abs(rawStrength + 0.5) / 0.5);
+    }
+    
+    return Math.max(5, Math.min(95, adjusted));
+  }
 
   // --- Преобразование данных для red flags ---
   function convertToRedFlagsFormat(games, playerName) {
@@ -622,44 +834,161 @@
     const vA = calcForaVariance(A.games);
     const vB = calcForaVariance(B.games);
 
-    const stabWeight = cfg.stabilityWeight || 0.5;
-    const stabFactorA = 1 / (1 + vA / 6);
-    const stabFactorB = 1 / (1 + vB / 6);
+    // Новые метрики
+    const matchesTodayA = calcMatchesToday(A.games);
+    const matchesTodayB = calcMatchesToday(B.games);
+    const scorePointsA = calculateScorePoints(A.games);
+    const scorePointsB = calculateScorePoints(B.games);
 
-    const kAdj = cfg.k * stabWeight;
-    const adjustedDiff = sA * stabFactorA - sB * stabFactorB;
-
+    // Улучшенный расчет вероятности с учетом множественных факторов
+    const stabWeight = cfg.stabilityWeight || 0.6;
+    
+    // Более сложные факторы стабильности
+    const stabA = calcStability(A.games) / 100; // 0-1
+    const stabB = calcStability(B.games) / 100; // 0-1
+    const stabFactorA = 0.7 + 0.3 * stabA; // 0.7-1.0
+    const stabFactorB = 0.7 + 0.3 * stabB; // 0.7-1.0
+    
+    // Фактор формы (последние 3 матча)
+    const recentA = A.games.slice(0, 3);
+    const recentB = B.games.slice(0, 3);
+    const formA = recentA.length > 0 ? recentA.filter(g => g.win).length / recentA.length : 0.5;
+    const formB = recentB.length > 0 ? recentB.filter(g => g.win).length / recentB.length : 0.5;
+    const formFactor = Math.tanh((formA - formB) * 2) * 0.1; // -0.1 до +0.1
+    
+    // Фактор качества побед (средний handicap в победах)
+    const winsA = A.games.filter(g => g.win);
+    const winsB = B.games.filter(g => g.win);
+    const qualityA = winsA.length > 0 ? winsA.reduce((sum, g) => sum + g.handicap, 0) / winsA.length : 0;
+    const qualityB = winsB.length > 0 ? winsB.reduce((sum, g) => sum + g.handicap, 0) / winsB.length : 0;
+    const qualityFactor = Math.tanh((qualityA - qualityB) / cfg.fMax) * 0.08;
+    
+    // Адаптивный коэффициент k с учетом стабильности
+    const avgStability = (stabA + stabB) / 2;
+    const kAdj = cfg.k * (0.8 + 0.4 * avgStability); // Более стабильные игроки = более предсказуемый результат
+    
+    // Основная разность сил с учетом стабильности
+    const adjustedDiff = (sA * stabFactorA - sB * stabFactorB) + formFactor + qualityFactor;
+    
+    // Базовая вероятность
     let prob = 1 / (1 + Math.exp(-kAdj * adjustedDiff));
-    prob = Math.min(0.92, Math.max(0.08, prob));
-    const smoothing = 0.12;
+    
+    // Адаптивное сглаживание в зависимости от количества данных
+    const dataQualityA = Math.min(1, A.games.length / 8); // 0-1
+    const dataQualityB = Math.min(1, B.games.length / 8); // 0-1
+    const avgDataQuality = (dataQualityA + dataQualityB) / 2;
+    
+    // Меньше данных = больше сглаживания
+    const smoothing = 0.15 * (1 - avgDataQuality);
+    prob = Math.min(0.90, Math.max(0.10, prob));
     const probFinal = prob * (1 - smoothing) + 0.5 * smoothing;
 
-    const W_h2h = 0.6, W_form = 0.4;
+    // Улучшенный комбинированный расчет с адаптивными весами
     const R_h2h = calcRh2h(A.player, B.player);
+    
+    // Более точный расчет формы с учетом качества игры
     const R_form = (() => {
-      const fA = A.games.slice(0, 5).reduce((s, g) => s + g.playerPoints, 0) /
-        A.games.slice(0, 5).reduce((s, g) => s + g.playerPoints + g.oppPoints, 0);
-      const fB = B.games.slice(0, 5).reduce((s, g) => s + g.playerPoints, 0) /
-        B.games.slice(0, 5).reduce((s, g) => s + g.playerPoints + g.oppPoints, 0);
-      return (fA + fB) ? fA / (fA + fB) : 0.5;
+      const recentA = A.games.slice(0, 5);
+      const recentB = B.games.slice(0, 5);
+      
+      if (recentA.length === 0 || recentB.length === 0) return 0.5;
+      
+      // Взвешенные очки с учетом времени и качества
+      let pointsA = 0, pointsB = 0, totalA = 0, totalB = 0;
+      
+      recentA.forEach((g, i) => {
+        const weight = Math.exp(-0.1 * i); // Более свежие матчи важнее
+        const qualityWeight = 1 + (g.win ? 0.2 : -0.1); // Бонус за победы
+        pointsA += g.playerPoints * weight * qualityWeight;
+        totalA += (g.playerPoints + g.oppPoints) * weight * qualityWeight;
+      });
+      
+      recentB.forEach((g, i) => {
+        const weight = Math.exp(-0.1 * i);
+        const qualityWeight = 1 + (g.win ? 0.2 : -0.1);
+        pointsB += g.playerPoints * weight * qualityWeight;
+        totalB += (g.playerPoints + g.oppPoints) * weight * qualityWeight;
+      });
+      
+      const ratioA = totalA > 0 ? pointsA / totalA : 0.5;
+      const ratioB = totalB > 0 ? pointsB / totalB : 0.5;
+      
+      return (ratioA + ratioB) > 0 ? ratioA / (ratioA + ratioB) : 0.5;
     })();
-
-    const pNew = W_h2h * R_h2h + W_form * R_form;
+    
+    // Адаптивные веса в зависимости от количества H2H данных
+    const h2hWeight = h2hData.total >= 3 ? 0.7 : h2hData.total >= 1 ? 0.4 : 0.1;
+    const formWeight = 1 - h2hWeight;
+    
+    const pNew = h2hWeight * R_h2h + formWeight * R_form;
 
     const predictedScores = predictAllScores(pNew);
 
-    const setsA = getSetWeights(A.games);
-    const setsB = getSetWeights(B.games.map(g => ({ ...g, pts: (g.pts || []).map(([a, b]) => [b, a]) })));
-    const setsH2H = getSetWeights((h2hData.h2hGames || []).filter(g => Array.isArray(g.pts)).map(g => ({ pts: g.pts })));
-    const allSets = [...setsA, ...setsB, ...setsH2H];
-
+    // Новая Bradley-Terry модель с улучшенным алгоритмом
     let btScoreProbs = [];
-    let rA = 1, rB = 1, bt_pSetA = 0.5, bt_pSetB = 0.5;
-    if (allSets.length >= 3) {
-      [rA, rB] = estimateBradleyTerryRatings(allSets);
-      bt_pSetA = rA / (rA + rB);
-      bt_pSetB = rB / (rA + rB);
-      btScoreProbs = calcBTScoreProbs(bt_pSetA, bt_pSetB);
+    let btResult = null;
+    let bettingStrategy = null;
+    let bt_pSetA = 0.5, bt_pSetB = 0.5;
+    
+    try {
+      // Конвертируем данные в формат новой BT модели
+      const last5A = convertGamesToBTFormat(A.games.slice(0, 5), A.player, "Opponent");
+      const last5B = convertGamesToBTFormat(B.games.slice(0, 5), B.player, "Opponent");
+      const h2hBT = h2hData.h2hGames ? convertH2HToBTFormat(h2hData.h2hGames, A.player, B.player) : [];
+      
+      console.log(`Bradley-Terry: Используем ${last5A.length} матчей игрока A, ${last5B.length} матчей игрока B, ${h2hBT.length} H2H матчей`);
+      
+      // Применяем новый алгоритм Bradley-Terry
+      btResult = btWinner(last5A, last5B, h2hBT, A.player, B.player, {
+        halfLife: 21,
+        betaMargin: 0.15,
+        lambdaMatch: 0.7,
+        alphaPrior: 2.0,
+        temperature: 1.2
+      });
+      
+      // Применяем стратегию ставок
+      bettingStrategy = btBettingStrategy(last5A, last5B, h2hBT, A.player, B.player, {
+        halfLife: 21,
+        betaMargin: 0.15,
+        lambdaMatch: 0.7,
+        alphaPrior: 2.0,
+        temperature: 1.2
+      });
+      
+      if (btResult && btResult.scores) {
+        bt_pSetA = btResult.p_set || 0.5;
+        bt_pSetB = 1 - bt_pSetA;
+        btScoreProbs = calcBTScoreProbs(btResult);
+        
+        console.log(`Bradley-Terry: Фаворит ${btResult.favorite}, p_set=${bt_pSetA.toFixed(3)}, p_match=${btResult.p_match.toFixed(3)}`);
+        console.log(`Bradley-Terry: Рейтинги rA=${btResult.ratings[A.player].toFixed(3)}, rB=${btResult.ratings[B.player].toFixed(3)}`);
+      }
+      
+      if (bettingStrategy) {
+        console.log(`Betting Strategy: ${bettingStrategy.recommendation}`);
+        if (bettingStrategy.betting.bet) {
+          console.log(`Betting Details: Tier ${bettingStrategy.betting.tier}, p_match=${(bettingStrategy.p_match * 100).toFixed(1)}%`);
+        } else {
+          console.log(`Skip Reason: ${bettingStrategy.betting.reason}`);
+        }
+      }
+    } catch (error) {
+      console.warn('Ошибка в новой Bradley-Terry модели:', error);
+      // Fallback к базовым вероятностям
+      btScoreProbs = [{
+        score: "3:0", probability: 0.125, label: "12.5%"
+      }, {
+        score: "3:1", probability: 0.125, label: "12.5%"
+      }, {
+        score: "3:2", probability: 0.125, label: "12.5%"
+      }, {
+        score: "0:3", probability: 0.125, label: "12.5%"
+      }, {
+        score: "1:3", probability: 0.125, label: "12.5%"
+      }, {
+        score: "2:3", probability: 0.125, label: "12.5%"
+      }];
     }
 
     const playerAMatchRawScores = A.games.map(g => g.rawScore).filter(Boolean);
@@ -671,10 +1000,6 @@
       }).join(", ");
     }).filter(Boolean);
 
-    const KU_tb35_playerA = calculatePersistenceCoefficient(playerAMatchRawScores);
-    const KU_tb35_playerB = calculatePersistenceCoefficient(playerBMatchRawScores);
-    const KUmodPlayerA = calculatePersistenceMod(playerAMatchRawScores);
-    const KUmodPlayerB = calculatePersistenceMod(playerBMatchRawScores);
 
     // --- Red Flags анализ ---
     let redFlags = null;
@@ -691,7 +1016,7 @@
       data: {
         playerA: {
           name: A.player,
-          strength: (50 + 50 * sA).toFixed(1),
+          strength: calculateDisplayStrength(sA).toFixed(1),
           probability: (probFinal * 100).toFixed(1),
           h2h: `${h2hData.wA}-${h2hData.wB}`,
           stability: calcStability(A.games),
@@ -702,12 +1027,13 @@
           h2hDryLoss: h2hData.dryWinsB,
           setWins: calcSetWins(A.games),
           visualization: createMatchVisualization(A.games),
-          ku_tb35: KU_tb35_playerA,
-          ku_tb35_mod: KUmodPlayerA,
+          // Новые метрики
+          matchesToday: matchesTodayA,
+          scorePoints: scorePointsA,
         },
         playerB: {
           name: B.player,
-          strength: (50 + 50 * sB).toFixed(1),
+          strength: calculateDisplayStrength(sB).toFixed(1),
           probability: ((1 - probFinal) * 100).toFixed(1),
           h2h: `${h2hData.wB}-${h2hData.wA}`,
           stability: calcStability(B.games),
@@ -718,24 +1044,27 @@
           h2hDryLoss: h2hData.dryWinsA,
           setWins: calcSetWins(B.games),
           visualization: createMatchVisualization(B.games),
-          ku_tb35: KU_tb35_playerB,
-          ku_tb35_mod: KUmodPlayerB,
+          // Новые метрики
+          matchesToday: matchesTodayB,
+          scorePoints: scorePointsB,
         },
         confidence: getConfidence(probFinal, 1 - probFinal, vA, vB, h2hData.total),
         favorite: probFinal > 0.5 ? A.player : B.player,
         predictedScores,
         btScoreProbs,
-        bt_ratings: { rA, rB },
+        bt_ratings: btResult ? btResult.ratings : { [A.player]: 1, [B.player]: 1 },
         bt_pSetA,
         bt_pSetB,
+        bt_favorite: btResult ? btResult.favorite : null,
+        bt_p_match: btResult ? btResult.p_match : 0.5,
         setsDist: {},
-        setsOver35: {},
         h2h: {
           total: h2hData.total,
           visualization: probFinal > 0.5
-            ? createMatchVisualization(h2hData.h2hGames)
-            : createMatchVisualization(h2hData.h2hGames.map(g => ({ win: 1 - g.win }))),
-          setWins: h2hData.h2hSetWins
+            ? createMatchVisualization(h2hData.h2hGames || [])
+            : createMatchVisualization((h2hData.h2hGames || []).map(g => ({ win: 1 - g.win }))),
+          setWins: h2hData.h2hSetWins,
+          h2hGames: h2hData.h2hGames || []
         },
         formChartData: {},
         h2hChartData: {},
@@ -746,15 +1075,29 @@
           flags: redFlags.flags,
           details: redFlags.details
         } : null,
+        // Betting Strategy данные
+        bettingStrategy: bettingStrategy,
       },
     };
   }
 
   chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
     if (req.action === "analyze") {
-      sendResponse(performAnalysis());
+      try {
+        const result = performAnalysis();
+        sendResponse(result);
+      } catch (error) {
+        console.error('Content script error:', error);
+        sendResponse({
+          success: false,
+          error: error.message || 'Ошибка анализа данных'
+        });
+      }
       return true; // удерживаем порт открытым
     }
   });
+
+  // Проверяем, что скрипт загружен
+  console.log('Tennis Analysis Pro content script loaded');
 
 })();

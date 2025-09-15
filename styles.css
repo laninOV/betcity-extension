@@ -5,8 +5,8 @@
 }
 
 body {
-  width: 600px;
-  min-height: 500px;
+  width: 1200px;
+  min-height: 300px;
   margin: 0;
   padding: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -17,7 +17,7 @@ body {
 }
 
 .container {
-  padding: 12px;
+  padding: 8px;
 }
 
 /* Состояния загрузки и ошибок */
@@ -167,11 +167,78 @@ body {
   margin-bottom: 6px;
 }
 
+/* Стили для рекомендаций по ставкам */
+.betting-recommendation {
+  text-align: center;
+}
+
+.recommendation-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.betting-status {
+  font-size: 1.2rem;
+  font-weight: bold;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  color: white;
+}
+
+.betting-status.strong-bet {
+  background-color: #22c55e;
+}
+
+.betting-status.moderate-bet {
+  background-color: #f59e0b;
+}
+
+.betting-status.weak-bet {
+  background-color: #3b82f6;
+}
+
+.betting-status.skip {
+  background-color: #ef4444;
+}
+
+.betting-tier {
+  font-size: 0.9rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.recommendation-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.betting-favorite {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #1f2937;
+}
+
+.betting-probability {
+  font-size: 1rem;
+  color: #6b7280;
+}
+
+.betting-reason {
+  font-size: 0.9rem;
+  color: #9ca3af;
+  font-style: italic;
+}
+
 .players-comparison {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 0;
+  gap: 1rem;
+  align-items: stretch;
 }
 
 .player-card {
@@ -269,19 +336,19 @@ body {
   text-align: center;
 }
 
-/* Топ-3 счета */
+/* Топ-3 счета - в одну строку */
 #topScoresWrapper {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 8px;
   margin-bottom: 8px;
 }
 
-/* Секции с двумя колонками */
+/* Секции с тремя колонками для более широкого макета */
 .two-column {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
   margin-bottom: 6px;
 }
 
@@ -304,7 +371,7 @@ body {
 }
 
 /* Адаптивность */
-@media (max-width: 650px) {
+@media (max-width: 950px) {
   body {
     width: 100%;
   }
@@ -313,6 +380,23 @@ body {
     padding: 10px;
   }
   
+  .stats-grid,
+  .two-column,
+  #topScoresWrapper {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .tb35-main {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .tb35-details {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 650px) {
   .stats-grid,
   .two-column,
   #topScoresWrapper {
@@ -339,4 +423,435 @@ body {
 
 .stats-card:hover {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+/* Стили для объединенного блока ТБ 3.5 */
+.tb35-unified-card {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 1px solid #0ea5e9;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  padding: 16px;
+}
+
+.tb35-main-stats {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 6px;
+}
+
+.tb35-probability-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.probability-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.probability-value {
+  font-size: 24px;
+  font-weight: bold;
+  color: #0369a1;
+}
+
+.probability-label {
+  font-size: 11px;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.confidence-display {
+  text-align: center;
+}
+
+.confidence-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.confidence-badge.high {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.confidence-badge.medium {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.confidence-badge.low {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.tb35-recommendation-unified {
+  flex: 1;
+  margin-left: 20px;
+  text-align: center;
+}
+
+.recommendation-text {
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.recommendation-text.recommendation-strong {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #22c55e;
+}
+
+.recommendation-text.recommendation-consider {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #f59e0b;
+}
+
+.recommendation-text.recommendation-caution {
+  background: #fed7aa;
+  color: #9a3412;
+  border: 1px solid #f97316;
+}
+
+.recommendation-text.recommendation-avoid {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #ef4444;
+}
+
+.players-tb35-stats {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  gap: 12px;
+}
+
+.player-tb35-card {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 6px;
+  padding: 12px;
+  text-align: center;
+}
+
+.player-tb35-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.player-name {
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 12px;
+}
+
+.player-tendency {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 8px;
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.player-tb35-details {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.persistence-score {
+  font-size: 16px;
+  font-weight: bold;
+  color: #0369a1;
+  margin-bottom: 4px;
+}
+
+.persistence-label {
+  font-size: 10px;
+  color: #64748b;
+  text-align: center;
+}
+
+.vs-separator {
+  font-weight: bold;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.tb35-analysis-factors {
+  margin-bottom: 16px;
+}
+
+.factor-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.factor-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.factor-icon {
+  font-size: 14px;
+}
+
+.factor-name {
+  flex: 1;
+  color: #475569;
+}
+
+.factor-value {
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 10px;
+}
+
+.tb35-detailed-analysis {
+  border-top: 1px solid #cbd5e1;
+  padding-top: 12px;
+  margin-top: 12px;
+}
+
+.analysis-section {
+  margin-bottom: 12px;
+}
+
+.analysis-section h4 {
+  margin: 0 0 6px 0;
+  font-size: 12px;
+  color: #374151;
+}
+
+.analysis-section ul {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 11px;
+  color: #4b5563;
+}
+
+.analysis-section li {
+  margin-bottom: 2px;
+}
+
+.tb35-toggle-details {
+  text-align: center;
+  margin-top: 12px;
+}
+
+.toggle-details-btn {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 11px;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toggle-details-btn:hover {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+}
+
+.tb35-card h3 {
+  color: #0c4a6e;
+  margin-bottom: 16px;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.tb35-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tb35-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.7);
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #bae6fd;
+}
+
+.tb35-probability {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.tb35-label {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.tb35-value {
+  font-size: 24px;
+  font-weight: 800;
+  color: #0c4a6e;
+}
+
+.tb35-confidence {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.tb35-confidence-badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.tb35-confidence-badge.high {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.tb35-confidence-badge.medium {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.tb35-confidence-badge.low {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.tb35-details {
+  display: flex;
+  gap: 16px;
+}
+
+.tb35-factors {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.5);
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #e0f2fe;
+}
+
+.factor-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.factor-item:last-child {
+  margin-bottom: 0;
+}
+
+.factor-label {
+  font-size: 11px;
+  color: #475569;
+  font-weight: 500;
+}
+
+.factor-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: #0c4a6e;
+  background: rgba(14, 165, 233, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.tb35-recommendation {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.8);
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #e0f2fe;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.recommendation-text {
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.recommendation-text.positive {
+  color: #166534;
+}
+
+.recommendation-text.negative {
+  color: #991b1b;
+}
+
+.recommendation-text.neutral {
+  color: #92400e;
+}
+
+/* Подсветка высоких показателей в статистике по сетам */
+.set-perfect {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+  color: #166534;
+  font-weight: 700;
+  border-radius: 4px;
+  padding: 2px 4px;
+  border: 1px solid #22c55e;
+  box-shadow: 0 1px 2px rgba(34, 197, 94, 0.1);
+}
+
+.set-excellent {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1d4ed8;
+  font-weight: 600;
+  border-radius: 4px;
+  padding: 2px 4px;
+  border: 1px solid #3b82f6;
+  box-shadow: 0 1px 2px rgba(59, 130, 246, 0.1);
+}
+
+.set-good {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #92400e;
+  font-weight: 600;
+  border-radius: 4px;
+  padding: 2px 4px;
+  border: 1px solid #f59e0b;
+  box-shadow: 0 1px 2px rgba(245, 158, 11, 0.1);
 }

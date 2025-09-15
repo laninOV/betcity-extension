@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Анализ теннисных матчей</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -17,76 +17,37 @@
     <div id="error" class="error hidden"><p></p></div>
 
     <div id="results" class="hidden">
-    <div id="recommendationBlock"></div>
+
 
     <!-- Топ-3 вероятных счетов Брэдли–Терри -->
     <div class="stats-card">
-      <h3>Топ 3 счета (Брэдли–Терри)</h3>
+      <h3>🏆 Топ 3 счета (Брэдли–Терри)</h3>
       <table class="mini-table" aria-label="Топ 3 наиболее вероятных счета - Брэдли–Терри">
         <thead><tr><th>Счет</th><th>Вероятность</th></tr></thead>
         <tbody id="topBTScoresBody"></tbody>
       </table>
     </div>
 
-    <!-- Краткая основная статистика игроков -->
-    <div id="mainQuickStats" class="stats-card">
+    <!-- Основные показатели -->
+    <div class="stats-card">
       <h3>Основные показатели</h3>
-      <div class="players-comparison">
-        <div class="player-card" id="playerACard">
-          <div class="player-header">
-            <span class="player-name" id="playerAName">Игрок 1</span>
-            <span class="player-status" id="playerAStatus">-</span>
-          </div>
-          <div class="player-stats">
-            <div class="stat-item">
-              <span class="stat-label">Сила</span>
-              <span class="stat-value" id="playerAStrength">-</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">Вероятность</span>
-              <span class="stat-value" id="playerAProbability">-</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">H2H</span>
-              <span class="stat-value" id="playerAH2H">-</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">Стабильность</span>
-              <span class="stat-value" id="playerAStability">-</span>
-            </div>
-          </div>
-        </div>
-        
-        <div class="vs-divider">VS</div>
-        
-        <div class="player-card" id="playerBCard">
-          <div class="player-header">
-            <span class="player-name" id="playerBName">Игрок 2</span>
-            <span class="player-status" id="playerBStatus">-</span>
-          </div>
-          <div class="player-stats">
-            <div class="stat-item">
-              <span class="stat-label">Сила</span>
-              <span class="stat-value" id="playerBStrength">-</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">Вероятность</span>
-              <span class="stat-value" id="playerBProbability">-</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">H2H</span>
-              <span class="stat-value" id="playerBH2H">-</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">Стабильность</span>
-              <span class="stat-value" id="playerBStability">-</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <table class="mini-table" aria-label="Основные показатели игроков">
+        <thead>
+          <tr>
+            <th>Показатель</th>
+            <th id="mainPlayerA">Игрок 1</th>
+            <th id="mainPlayerB">Игрок 2</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Сила</td><td id="mainStrengthA">-</td><td id="mainStrengthB">-</td></tr>
+          <tr><td>Вероятность</td><td id="mainProbabilityA">-</td><td id="mainProbabilityB">-</td></tr>
+          <tr><td>H2H</td><td id="mainH2HA">-</td><td id="mainH2HB">-</td></tr>
+        </tbody>
+      </table>
     </div>
 
-    <!-- Статистика игроков и КУ на одном уровне -->
+    <!-- Статистика игроков и КУ ТБ 3.5 -->
     <div class="two-column">
       <section class="stats-card">
         <h3>Статистика игроков</h3>
@@ -103,34 +64,44 @@
             <tr><td>S₅</td><td id="s5Player1">-</td><td id="s5Player2">-</td></tr>
             <tr><td>Сухие победы</td><td id="dryWins1">-</td><td id="dryWins2">-</td></tr>
             <tr><td>Сухие поражения</td><td id="dryLosses1">-</td><td id="dryLosses2">-</td></tr>
+            <tr><td>Матчей сегодня</td><td id="matchesToday1">-</td><td id="matchesToday2">-</td></tr>
+            <tr><td>Очки (5 матчей)</td><td id="scorePoints1">-</td><td id="scorePoints2">-</td></tr>
           </tbody>
         </table>
       </section>
+      
       <section class="stats-card">
-        <h3>КУ ТБ 3.5</h3>
-        <table class="mini-table" aria-describedby="kuTbDesc">
-          <thead>
-            <tr>
-              <th>Игрок</th>
-              <th>КУ</th>
-              <th>Рекомендация</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td id="kuTbPlayerA">-</td>
-              <td id="kuTbValueA">-</td>
-              <td id="kuTbRecA">-</td>
-            </tr>
-            <tr>
-              <td id="kuTbPlayerB">-</td>
-              <td id="kuTbValueB">-</td>
-              <td id="kuTbRecB">-</td>
-            </tr>
-          </tbody>
-        </table>
+        <h3>🎾 КУ ТБ 3.5 сетов</h3>
+        <div class="tb35-block">
+          <div class="tb35-probability">
+            <span class="tb35-label">Вероятность:</span>
+            <span id="tb35ProbabilityUnified" class="tb35-value">-</span>
+          </div>
+          <div class="tb35-recommendation">
+            <span class="tb35-label">Рекомендация:</span>
+            <span id="tb35RecommendationUnified" class="tb35-rec">-</span>
+          </div>
+          <div class="tb35-confidence">
+            <span class="tb35-label">Уверенность:</span>
+            <span id="tb35ConfidenceUnified" class="tb35-conf">-</span>
+          </div>
+          <div class="tb35-details" id="tb35DetailsUnified" style="display:none;">
+            <div class="tb35-factors">
+              <div class="factors-for">
+                <strong>ЗА:</strong>
+                <ul id="tb35FactorsForUnified"></ul>
+              </div>
+              <div class="factors-against">
+                <strong>ПРОТИВ:</strong>
+                <ul id="tb35FactorsAgainstUnified"></ul>
+              </div>
+            </div>
+            <div class="tb35-warnings" id="tb35WarningsUnified"></div>
+          </div>
+        </div>
       </section>
     </div>
+
 
     <!-- Визуализация и победы в сетах на одном уровне -->
     <div class="two-column">
@@ -150,13 +121,9 @@
             <span id="h2hVizInline" class="dots-viz"></span>
           </div>
         </div>
-        <div class="legend" aria-label="Легенда">
-          <span class="legend-item">🟢 – победа</span>
-          <span class="legend-item">🔴 – поражение</span>
-        </div>
       </section>
       <section class="stats-card">
-        <h3>Победы в сетах</h3>
+        <h3>Победы в сетах (общая статистика)</h3>
         <table class="mini-table">
           <thead>
             <tr><th>Сет</th><th id="p1Sets">Игрок 1</th><th id="p2Sets">Игрок 2</th></tr>

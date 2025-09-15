@@ -12,14 +12,15 @@
 }
 
 body {
-  width: 780px !important;          /* УМЕНЬШИЛ ширину */
+  width: 1200px !important;
+  height: 800px !important;
   margin: 0;
   padding: 0;
   box-sizing: border-box;
   background: linear-gradient(135deg, #4158d0 0%, #667eea 50%, #764ba2 100%);
   background-size: cover;
   color: var(--text-main);
-  font-size: 13px;
+  font-size: 14px;
   font-family: 'Segoe UI', 'Roboto', 'Arial', sans-serif;
   overflow-y: auto;
   overflow-x: hidden;
@@ -34,6 +35,7 @@ body {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  padding: 16px;
 }
 
 header {
@@ -139,7 +141,7 @@ h1 {
 }
 
 .main-table th, .main-table td {
-  padding: 10px 6px;               /* УМЕНЬШИЛ отступы */
+  padding: 12px 10px;
   text-align: center;
 }
 
@@ -185,9 +187,9 @@ h1 {
 .stats-card {
   background: var(--card-bg);
   box-shadow: 0 2px 12px #191e3028;
-  padding: 12px;
+  padding: 16px;
   border-radius: 12px;
-  font-size: 13px;
+  font-size: 14px;
   color: #eaefff;
 }
 
@@ -207,7 +209,7 @@ h1 {
 
 .mini-table th,
 .mini-table td {
-  padding: 6px 3px;                /* УМЕНЬШИЛ отступы */
+  padding: 8px 6px;
   text-align: center;
   border-bottom: 1px solid #353a5c;
 }
@@ -234,18 +236,18 @@ h1 {
 }
 
 .player-name-viz {
-  width: 90px;                     /* УМЕНЬШИЛ ширину */
-  font-size: 12px;
+  width: 120px;
+  font-size: 13px;
   color: #bacef5;
-  margin-right: 6px;               /* УМЕНЬШИЛ отступ */
+  margin-right: 10px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .dots-viz {
-  font-size: 13px;                 /* УМЕНЬШИЛ размер */
-  letter-spacing: 1px;             /* УМЕНЬШИЛ расстояние */
+  font-size: 14px;
+  letter-spacing: 2px;
   color: #fff;
 }
 
@@ -257,7 +259,7 @@ h1 {
 }
 
 .legend-item {
-  margin-right: 10px;              /* УМЕНЬШИЛ отступ */
+  margin-right: 15px;
 }
 
 .compact-stats {
@@ -301,4 +303,86 @@ h1 {
   grid-template-columns: 1fr 1fr;
   gap: 12px;
   margin-top: 12px;
+}
+
+.two-column {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+/* Стили для блока ТБ 3.5 */
+.tb35-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tb35-probability, .tb35-recommendation, .tb35-confidence {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid #353a5c;
+}
+
+.tb35-label {
+  color: #bac9e8;
+  font-size: 13px;
+}
+
+.tb35-value {
+  color: #eaefff;
+  font-weight: 600;
+}
+
+.tb35-rec {
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.tb35-conf {
+  color: #eaefff;
+  font-weight: 600;
+}
+
+.tb35-details {
+  margin-top: 8px;
+  padding: 8px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.tb35-factors {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.factors-for, .factors-against {
+  color: #bac9e8;
+}
+
+.factors-for ul, .factors-against ul {
+  margin: 4px 0 0 0;
+  padding-left: 16px;
+}
+
+.factors-for li {
+  color: #27c57e;
+}
+
+.factors-against li {
+  color: #e03a3a;
+}
+
+.tb35-warnings {
+  color: #ffd600;
+  font-size: 11px;
+  font-style: italic;
 }
