@@ -138,14 +138,44 @@ document.addEventListener('DOMContentLoaded', () => {
     const probB = parseFloat(data.playerB.probability);
     const isFavA = probA > probB;
     
-    // Добавляем классы для подсветки фаворита только по вероятности (как раньше)
-    if (isFavA) {
-      if (mainProbabilityA) mainProbabilityA.className = 'favorite-value';
-      if (mainProbabilityB) mainProbabilityB.className = '';
-    } else {
-      if (mainProbabilityA) mainProbabilityA.className = '';
-      if (mainProbabilityB) mainProbabilityB.className = 'favorite-value';
+    // Подсветка вероятности только при явном перевесе
+    const probDelta = Math.abs((isNaN(probA) ? 0 : probA) - (isNaN(probB) ? 0 : probB));
+    const probHighlightThreshold = 10; // п.п.
+    if (mainProbabilityA) mainProbabilityA.classList.remove('favorite-value');
+    if (mainProbabilityB) mainProbabilityB.classList.remove('favorite-value');
+    if (probDelta >= probHighlightThreshold) {
+      if (isFavA && mainProbabilityA) mainProbabilityA.classList.add('favorite-value');
+      if (!isFavA && mainProbabilityB) mainProbabilityB.classList.add('favorite-value');
     }
+
+    // Жёлтая подсветка ключевых разниц: сила, стабильность, H2H
+    const clearHL = (el) => { if (el) el.classList.remove('metric-highlight'); };
+
+    // Сила: разница >= 12 пунктов (0..100)
+    const strA = parseFloat(data.playerA.strength);
+    const strB = parseFloat(data.playerB.strength);
+    clearHL(mainStrengthA); clearHL(mainStrengthB);
+    if (!isNaN(strA) && !isNaN(strB)) {
+      if (strA - strB >= 12) { if (mainStrengthA) mainStrengthA.classList.add('metric-highlight'); }
+      else if (strB - strA >= 12) { if (mainStrengthB) mainStrengthB.classList.add('metric-highlight'); }
+    }
+
+    // Стабильность: разница >= 15 п.п.
+    const stabA = parseFloat(data.playerA.stability);
+    const stabB = parseFloat(data.playerB.stability);
+    clearHL(mainStabilityA); clearHL(mainStabilityB);
+    if (!isNaN(stabA) && !isNaN(stabB)) {
+      if (stabA - stabB >= 15) { if (mainStabilityA) mainStabilityA.classList.add('metric-highlight'); }
+      else if (stabB - stabA >= 15) { if (mainStabilityB) mainStabilityB.classList.add('metric-highlight'); }
+    }
+
+    // H2H: преимущество >= 3 побед
+    clearHL(mainH2HA); clearHL(mainH2HB);
+    try {
+      const [hA, hB] = (data.playerA.h2h || '0-0').split('-').map(x => parseInt(x, 10));
+      if ((hA - hB) >= 3) { if (mainH2HA) mainH2HA.classList.add('metric-highlight'); }
+      else if ((hB - hA) >= 3) { if (mainH2HB) mainH2HB.classList.add('metric-highlight'); }
+    } catch (_) {}
   }
 
   function fillStatsTables(data) {
@@ -171,21 +201,41 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const s5Player1 = document.getElementById('s5Player1');
     if (s5Player1) s5Player1.textContent = formatStrength(data.playerA.s5);
-    
     const s5Player2 = document.getElementById('s5Player2');
     if (s5Player2) s5Player2.textContent = formatStrength(data.playerB.s5);
+
+    // Подсветка S5: |S5| >= 0.30
+    const clearHL = (el) => { if (el) el.classList.remove('metric-highlight'); };
+    clearHL(s5Player1); clearHL(s5Player2);
+    const s5a = parseFloat(data.playerA.s5);
+    const s5b = parseFloat(data.playerB.s5);
+    const s5Th = 0.30;
+    if (!isNaN(s5a) && Math.abs(s5a) >= s5Th) { s5Player1 && s5Player1.classList.add('metric-highlight'); }
+    if (!isNaN(s5b) && Math.abs(s5b) >= s5Th) { s5Player2 && s5Player2.classList.add('metric-highlight'); }
 
     // ⚡ Comeback ability
     const comeback1 = document.getElementById('comeback1');
     const comeback2 = document.getElementById('comeback2');
     if (comeback1) {
       const v = data.playerA.comebackAbility;
-      comeback1.textContent = (typeof v === 'number') ? `${v}%` : '-';
+      const val = (typeof v === 'number') ? v : null;
+      comeback1.textContent = (val != null) ? `${val}%` : '-';
+      if (val != null) {
+        comeback1.classList.toggle('metric-highlight', val >= 60);
+      } else {
+        comeback1.classList.remove('metric-highlight');
+      }
     }
 
     if (comeback2) {
       const v = data.playerB.comebackAbility;
-      comeback2.textContent = (typeof v === 'number') ? `${v}%` : '-';
+      const val = (typeof v === 'number') ? v : null;
+      comeback2.textContent = (val != null) ? `${val}%` : '-';
+      if (val != null) {
+        comeback2.classList.toggle('metric-highlight', val >= 60);
+      } else {
+        comeback2.classList.remove('metric-highlight');
+      }
     }
 
     // Стабильность (новая) удалена из интерфейса
@@ -384,21 +434,40 @@ document.addEventListener('DOMContentLoaded', () => {
     if (patName2) patName2.textContent = data.playerB.name;
 
     const fmt = (v) => (v == null ? '-' : `${Math.round(v * 100)}%`);
+    const clearHL = (el) => { if (el) el.classList.remove('metric-highlight'); };
+    const applyHL = (el, v) => {
+      if (!el) return;
+      clearHL(el);
+      if (v == null) return;
+      if (v >= 0.6) el.classList.add('metric-highlight');
+    };
 
     const pattern3rd1 = document.getElementById('pattern3rd1');
-    if (pattern3rd1) pattern3rd1.textContent = fmt(data.playerA.patterns?.pattern3rd);
+    const p3a = data.playerA.patterns?.pattern3rd ?? null;
+    if (pattern3rd1) pattern3rd1.textContent = fmt(p3a);
+    applyHL(pattern3rd1, p3a);
     const pattern3rd2 = document.getElementById('pattern3rd2');
-    if (pattern3rd2) pattern3rd2.textContent = fmt(data.playerB.patterns?.pattern3rd);
+    const p3b = data.playerB.patterns?.pattern3rd ?? null;
+    if (pattern3rd2) pattern3rd2.textContent = fmt(p3b);
+    applyHL(pattern3rd2, p3b);
 
     const after01_1 = document.getElementById('after01_1');
-    if (after01_1) after01_1.textContent = fmt(data.playerA.patterns?.after0_1);
+    const p01a = data.playerA.patterns?.after0_1 ?? null;
+    if (after01_1) after01_1.textContent = fmt(p01a);
+    applyHL(after01_1, p01a);
     const after01_2 = document.getElementById('after01_2');
-    if (after01_2) after01_2.textContent = fmt(data.playerB.patterns?.after0_1);
+    const p01b = data.playerB.patterns?.after0_1 ?? null;
+    if (after01_2) after01_2.textContent = fmt(p01b);
+    applyHL(after01_2, p01b);
 
     const after11_1 = document.getElementById('after11_1');
-    if (after11_1) after11_1.textContent = fmt(data.playerA.patterns?.after1_1);
+    const p11a = data.playerA.patterns?.after1_1 ?? null;
+    if (after11_1) after11_1.textContent = fmt(p11a);
+    applyHL(after11_1, p11a);
     const after11_2 = document.getElementById('after11_2');
-    if (after11_2) after11_2.textContent = fmt(data.playerB.patterns?.after1_1);
+    const p11b = data.playerB.patterns?.after1_1 ?? null;
+    if (after11_2) after11_2.textContent = fmt(p11b);
+    applyHL(after11_2, p11b);
   }
 
 

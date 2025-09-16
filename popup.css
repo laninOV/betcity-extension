@@ -392,6 +392,16 @@ h1 {
   font-weight: 700;
 }
 
+/* Единая жёлтая подсветка важного показателя */
+.metric-highlight {
+  background: rgba(255, 214, 0, 0.16);
+  color: #ffe799;
+  font-weight: 700;
+  border-radius: 4px;
+  padding: 2px 6px;
+  border: 1px solid rgba(255, 214, 0, 0.35);
+}
+
 /* Универсальные бейджи для важных метрик */
 /* удалены временные бейджи подсветки */
 
