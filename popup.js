@@ -118,6 +118,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const mainProbabilityB = document.getElementById('mainProbabilityB');
     const mainH2HA = document.getElementById('mainH2HA');
     const mainH2HB = document.getElementById('mainH2HB');
+    const mainStabilityA = document.getElementById('mainStabilityA');
+    const mainStabilityB = document.getElementById('mainStabilityB');
 
     if (mainPlayerA) mainPlayerA.textContent = data.playerA.name;
     if (mainPlayerB) mainPlayerB.textContent = data.playerB.name;
@@ -127,6 +129,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (mainProbabilityB) mainProbabilityB.textContent = data.playerB.probability + '%';
     if (mainH2HA) mainH2HA.textContent = data.playerA.h2h;
     if (mainH2HB) mainH2HB.textContent = data.playerB.h2h;
+    if (mainStabilityA) mainStabilityA.textContent =
+      typeof data.playerA.stability === 'number' ? `${data.playerA.stability}%` : '-';
+    if (mainStabilityB) mainStabilityB.textContent =
+      typeof data.playerB.stability === 'number' ? `${data.playerB.stability}%` : '-';
 
     // Определяем фаворита для подсветки
     const probA = parseFloat(data.playerA.probability);
@@ -169,7 +175,14 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const s5Player2 = document.getElementById('s5Player2');
     if (s5Player2) s5Player2.textContent = formatStrength(data.playerB.s5);
-    
+
+    // Стабильность (0-100)
+    const stability1 = document.getElementById('stability1');
+    if (stability1) stability1.textContent = (typeof data.playerA.stability === 'number') ? `${data.playerA.stability}%` : '-';
+
+    const stability2 = document.getElementById('stability2');
+    if (stability2) stability2.textContent = (typeof data.playerB.stability === 'number') ? `${data.playerB.stability}%` : '-';
+
     const dryWins1 = document.getElementById('dryWins1');
     if (dryWins1) dryWins1.textContent = data.playerA.dryWins;
     
@@ -187,8 +200,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (matchesToday1) {
       const todayData = data.playerA.matchesToday;
       if (todayData && typeof todayData === 'object') {
-        const winsText = todayData.wins > 0 ? `<span style="color: green; font-weight: bold;">${todayData.wins}П</span>` : '';
-        const lossesText = todayData.losses > 0 ? `<span style="color: red; font-weight: bold;">${todayData.losses}П</span>` : '';
+        const winsText = todayData.wins > 0 ? `<span style="color: green; font-weight: bold;">${todayData.wins}</span>` : '';
+        const lossesText = todayData.losses > 0 ? `<span style="color: red; font-weight: bold;">${todayData.losses}</span>` : '';
         const parts = [winsText, lossesText].filter(Boolean);
         matchesToday1.innerHTML = `${todayData.total} ${parts.length > 0 ? `(${parts.join('/')})` : ''}`;
       } else {
@@ -200,8 +213,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (matchesToday2) {
       const todayData = data.playerB.matchesToday;
       if (todayData && typeof todayData === 'object') {
-        const winsText = todayData.wins > 0 ? `<span style="color: green; font-weight: bold;">${todayData.wins}П</span>` : '';
-        const lossesText = todayData.losses > 0 ? `<span style="color: red; font-weight: bold;">${todayData.losses}П</span>` : '';
+        const winsText = todayData.wins > 0 ? `<span style="color: green; font-weight: bold;">${todayData.wins}</span>` : '';
+        const lossesText = todayData.losses > 0 ? `<span style="color: red; font-weight: bold;">${todayData.losses}</span>` : '';
         const parts = [winsText, lossesText].filter(Boolean);
         matchesToday2.innerHTML = `${todayData.total} ${parts.length > 0 ? `(${parts.join('/')})` : ''}`;
       } else {
@@ -347,12 +360,12 @@ document.addEventListener('DOMContentLoaded', () => {
         return sum + (won || 0);
       }, 0);
       
-      // Показываем суммарные H2H в заголовочной строке
-      tbody.insertAdjacentHTML('beforeend', `<tr style="border-top: 2px solid #e2e8f0; background-color: #f8fafc;"><td><strong>H2H</strong></td><td><strong>${h2hP1Won}/${h2hP1Total}</strong></td><td><strong>${h2hP2Won}/${h2hP2Total}</strong></td></tr>`);
+      // Показываем суммарные H2H в заголовочной строке (единый стиль)
+      tbody.insertAdjacentHTML('beforeend', `<tr class="h2h-summary-row"><td><strong>H2H</strong></td><td><strong>${h2hP1Won}/${h2hP1Total}</strong></td><td><strong>${h2hP2Won}/${h2hP2Total}</strong></td></tr>`);
       
       Object.entries(data.h2h.setWins.playerA || {}).forEach(([set, [p1Val]]) => {
         const p2Val = data.h2h.setWins.playerB && data.h2h.setWins.playerB[set] ? data.h2h.setWins.playerB[set][0] : '-';
-        tbody.insertAdjacentHTML('beforeend', `<tr style="background-color: #f8fafc;"><td><strong>${set.replace('set', '')}</strong></td><td><strong>${p1Val}</strong></td><td><strong>${p2Val}</strong></td></tr>`);
+        tbody.insertAdjacentHTML('beforeend', `<tr class="h2h-set-row"><td><strong>${set.replace('set', '')}</strong></td><td><strong>${p1Val}</strong></td><td><strong>${p2Val}</strong></td></tr>`);
       });
     }
   }

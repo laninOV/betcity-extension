@@ -5,7 +5,8 @@
 }
 
 body {
-  width: 1200px;
+  /* Chrome caps extension popup width at ~800px */
+  width: 800px;
   min-height: 300px;
   margin: 0;
   padding: 0;
@@ -371,7 +372,8 @@ body {
 }
 
 /* Адаптивность */
-@media (max-width: 950px) {
+/* Keep 3 columns at 800px-wide popup; switch below ~780px */
+@media (max-width: 780px) {
   body {
     width: 100%;
   }

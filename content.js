@@ -304,77 +304,93 @@
     return adjustedStrength;
   }
 
-  // --- Улучшенная стабильность ---
+  // --- Стабильность (более резкий и правдоподобный расчёт) ---
   function calcStability(games) {
     if (!games.length) return 0;
-    
-    // 1. Стабильность результатов с учетом качества побед
-    const results = games.map(g => {
+
+    // Взвешивание по времени (используем g.w, нормируем)
+    const weights = games.map(g => Math.max(1e-6, g.w || 1));
+    const W = weights.reduce((s, w) => s + w, 0) || 1;
+    const nw = weights.map(w => w / W);
+
+    // 1) Стабильность результатов с учётом качества счёта
+    const resVals = games.map(g => {
       if (g.win) {
-        // Качественные победы дают больше очков стабильности
         if (g.playerSets === 3 && g.oppSets === 0) return 1.0;
         if (g.playerSets === 3 && g.oppSets === 1) return 0.8;
         if (g.playerSets === 3 && g.oppSets === 2) return 0.6;
       } else {
-        // Близкие поражения менее негативны для стабильности
         if (g.oppSets === 3 && g.playerSets === 2) return -0.3;
         if (g.oppSets === 3 && g.playerSets === 1) return -0.6;
         if (g.oppSets === 3 && g.playerSets === 0) return -1.0;
       }
       return 0;
     });
-    
-    const avgResult = results.reduce((a, b) => a + b, 0) / results.length;
-    const resultVariance = results.reduce((sum, r) => sum + Math.pow(r - avgResult, 2), 0) / results.length;
-    const resultStability = Math.max(0, 100 - Math.sqrt(resultVariance) * 50);
-    
-    // 2. Стабильность по качеству игры (handicap)
-    const handicaps = games.map(g => g.handicap);
-    const meanHandicap = handicaps.reduce((a, b) => a + b, 0) / handicaps.length;
-    const handicapVariance = handicaps.reduce((sum, h) => sum + Math.pow(h - meanHandicap, 2), 0) / handicaps.length;
-    const handicapStability = Math.max(0, 100 - Math.sqrt(handicapVariance) * 6);
-    
-    // 3. Стабильность формы (последние vs общие результаты)
-    const recentGames = games.slice(0, Math.min(4, games.length));
-    const recentAvg = recentGames.length > 0 ? 
-      recentGames.reduce((sum, g) => sum + (g.win ? 1 : 0), 0) / recentGames.length : 0.5;
-    const overallWinRate = games.filter(g => g.win).length / games.length;
-    const formStability = Math.max(0, 100 - Math.abs(recentAvg - overallWinRate) * 200);
-    
-    // 4. Стабильность по сетам (насколько стабильно выигрывает/проигрывает сеты)
-    let setStability = 50; // базовое значение
-    if (games.length >= 3) {
-      const setResults = [];
-      games.slice(0, 5).forEach(g => {
-        if (g.pts && g.pts.length > 0) {
-          g.pts.forEach(([a, b]) => {
-            setResults.push(a > b ? 1 : 0);
-          });
-        }
-      });
-      
-      if (setResults.length >= 5) {
-        const setWinRate = setResults.reduce((a, b) => a + b, 0) / setResults.length;
-        const setVariance = setResults.reduce((sum, r) => sum + Math.pow(r - setWinRate, 2), 0) / setResults.length;
-        setStability = Math.max(0, 100 - Math.sqrt(setVariance) * 100);
+    const rMean = resVals.reduce((s, v, i) => s + v * nw[i], 0);
+    const rVar = resVals.reduce((s, v, i) => s + nw[i] * (v - rMean) ** 2, 0);
+    const rStd = Math.sqrt(rVar);
+    let resultStab = Math.max(0, 1 - rStd);        // 0..1
+    resultStab = Math.pow(resultStab, 1.15);       // чуть резче
+
+    // 2) Стабильность по качеству игры: нормированный гандикап на сет
+    const normH = games.map(g => {
+      const sets = Math.max(1, (g.playerSets || 0) + (g.oppSets || 0));
+      return (g.handicap || 0) / sets;
+    });
+    const hMean = normH.reduce((s, v, i) => s + v * nw[i], 0);
+    const hVar = normH.reduce((s, v, i) => s + nw[i] * (v - hMean) ** 2, 0);
+    const hStd = Math.sqrt(hVar);
+    let handicapStab = Math.max(0, 1 - (hStd / 5)); // делитель 5 даёт больший контраст
+    handicapStab = Math.pow(handicapStab, 1.1);
+
+    // 3) Стабильность формы: сравниваем последние 4 vs общий, с эксп. весами
+    const rec = games.slice(0, Math.min(4, games.length));
+    const recW = rec.map((_, i) => Math.exp(-0.3 * i));
+    const RW = recW.reduce((s, w) => s + w, 0) || 1;
+    const recWin = rec.length ? rec.reduce((s, g, i) => s + (g.win ? 1 : 0) * recW[i], 0) / RW : 0.5;
+    const allWin = games.reduce((s, g, i) => s + (g.win ? 1 : 0) * nw[i], 0);
+    let formStab = Math.max(0, 1 - Math.abs(recWin - allWin) * 2.5); // 0..1, резче
+    formStab = Math.pow(formStab, 1.1);
+
+    // 4) Стабильность по сетам: дисперсия результатов сетов в последних 5 матчах
+    const setRes = [];
+    const take = games.slice(0, Math.min(5, games.length));
+    take.forEach((g) => {
+      if (Array.isArray(g.pts)) {
+        const s = Math.max(1, g.pts.length);
+        const w = (g.w || 1) / s;
+        g.pts.forEach(([a, b]) => setRes.push({ v: a > b ? 1 : 0, w }));
       }
+    });
+    let setStab = 0.5;
+    if (setRes.length >= 5) {
+      const SW = setRes.reduce((s, x) => s + x.w, 0) || 1;
+      const m = setRes.reduce((s, x) => s + x.v * x.w, 0) / SW;
+      const v = setRes.reduce((s, x) => s + x.w * (x.v - m) ** 2, 0) / SW;
+      const std = Math.sqrt(v);
+      setStab = Math.max(0, 1 - std);
     }
-    
-    // Комбинированная стабильность с адаптивными весами
-    const weights = {
-      result: 0.35,
-      handicap: 0.25, 
-      form: 0.25,
-      sets: 0.15
-    };
-    
-    const combined = 
-      resultStability * weights.result +
-      handicapStability * weights.handicap +
-      formStability * weights.form +
-      setStability * weights.sets;
-    
-    return Math.round(Math.max(0, Math.min(100, combined)));
+
+    // 5) «Рваность» серии: доля смен результата в последних 6 матчах
+    const seq = games.slice(0, Math.min(6, games.length)).map(g => (g.win ? 1 : 0));
+    let streakStab = 1;
+    if (seq.length >= 3) {
+      let switches = 0;
+      for (let i = 1; i < seq.length; i++) if (seq[i] !== seq[i - 1]) switches++;
+      const rate = switches / (seq.length - 1);
+      streakStab = Math.max(0, 1 - rate); // больше переключений → ниже стабильность
+    }
+
+    // Комбинация (веса суммарно = 1)
+    const wgt = { result: 0.37, handicap: 0.22, form: 0.20, sets: 0.12, streak: 0.09 };
+    const combined01 =
+      resultStab * wgt.result +
+      handicapStab * wgt.handicap +
+      formStab * wgt.form +
+      setStab * wgt.sets +
+      streakStab * wgt.streak;
+
+    return Math.round(Math.max(0, Math.min(100, combined01 * 100)));
   }
 
   // --- Подсчёт сухих побед/поражений ---
@@ -786,26 +802,90 @@
   }
 
 
-  // --- Улучшенное отображение силы игрока ---
+  // --- Отображение силы игрока (0–100) ---
   function calculateDisplayStrength(rawStrength) {
-    // Преобразуем сырую силу (-∞, +∞) в понятный рейтинг (0-100)
-    // Используем сигмоидальную функцию для более реалистичного масштабирования
-    
-    // Нормализация: большинство игроков должны быть в диапазоне 30-70
-    const normalized = 50 + 25 * Math.tanh(rawStrength * 2);
-    
-    // Дополнительные корректировки для крайних значений
-    let adjusted = normalized;
-    
-    if (rawStrength > 0.5) {
-      // Очень сильные игроки: 75-95
-      adjusted = 75 + 20 * Math.min(1, (rawStrength - 0.5) / 0.5);
-    } else if (rawStrength < -0.5) {
-      // Очень слабые игроки: 5-25
-      adjusted = 25 - 20 * Math.min(1, Math.abs(rawStrength + 0.5) / 0.5);
+    // Маппинг - усиливает контраст, даёт значения в пределах 0..100
+    const score = 50 + 50 * Math.tanh(rawStrength);
+    return Math.max(0, Math.min(100, score));
+  }
+
+  // --- Расширенный расчёт силы (учитывает больше факторов) ---
+  function calculateEnhancedRawStrength(games, opponentGames, h2hData, playerName, opponentName, btResult) {
+    if (!games || games.length === 0) return 0;
+
+    // 1) База и модернизированная сила
+    const base = calcBaseS(games);          // взвешенная по времени Mi
+    const adj = strengthAdj(games);         // с балансом фор, формой, стабильностью и т.д.
+
+    // 2) Доминирование по сетам и очкам
+    let setsWon = 0, setsTotal = 0, ptsWon = 0, ptsTot = 0;
+    games.forEach(g => {
+      setsWon += g.playerSets || 0;
+      setsTotal += (g.playerSets || 0) + (g.oppSets || 0);
+      ptsWon += g.playerPoints || 0;
+      ptsTot += (g.playerPoints || 0) + (g.oppPoints || 0);
+    });
+    const setRate = setsTotal > 0 ? setsWon / setsTotal : 0.5;                 // 0..1
+    const setDom = Math.tanh((setRate - 0.5) / 0.15);                          // ~-1..1
+    const ptRate = ptsTot > 0 ? ptsWon / ptsTot : 0.5;
+    const ptDom = Math.tanh((ptRate - 0.5) / 0.07);
+
+    // 3) Тренд последних матчей (по Mi)
+    const recent = games.slice(0, Math.min(4, games.length));
+    const older = games.slice(4, Math.min(8, games.length));
+    const mean = arr => arr.length ? arr.reduce((s, g) => s + (g.Mi || 0), 0) / arr.length : 0;
+    const trend = Math.tanh((mean(recent) - mean(older)) / 0.4);               // -1..1
+
+    // 4) Сухие победы/поражения как индикатор надёжности
+    const dry = calcDryGames(games);
+    const dryScore = Math.tanh(((dry.wins || 0) - (dry.losses || 0)) / 6);     // -1..1
+
+    // 5) Вариативность как штраф за непредсказуемость
+    const variance = calcForaVariance(games) || 0;                             // ~0..>
+    const varPenalty = -Math.tanh((variance) / 10);                            // -1..0
+
+    // 6) H2H влияние (если есть достаточный объём)
+    const h2hTotal = h2hData && h2hData.total ? h2hData.total : 0;
+    const h2hEdge = h2hTotal > 0 ? (h2hData.wA - h2hData.wB) / Math.max(1, h2hTotal) : 0; // -1..1 (для A как playerA)
+    // Определяем знак относительно имени
+    let h2hImpact = 0;
+    if (h2hTotal > 0) {
+      const isPlayerA = h2hData && typeof h2hData.wA === 'number' && playerName === (h2hData.playerAName || playerName);
+      // Если нет исходных имён в h2hData, считаем, что h2hEdge рассчитан как A-B при вызове для A
+      h2hImpact = Math.tanh(h2hEdge) * 0.5; // масштабируем, затем в общем весим слабее
     }
-    
-    return Math.max(5, Math.min(95, adjusted));
+
+    // 7) Bradley–Terry: относительная оценка силы пары
+    let btEdge = 0;
+    if (btResult && btResult.ratings) {
+      const rA = btResult.ratings[playerName] || 1;
+      const rB = btResult.ratings[opponentName] || 1;
+      btEdge = Math.tanh((rA - rB) / (rA + rB));                                // -1..1
+    }
+
+    // 8) Фактор усталости: матчи сегодня снижают надёжность и силу
+    const today = calcMatchesToday(games);
+    const fatiguePenalty = -Math.min(0.4, 0.12 * (today.total || 0));          // до -0.36
+
+    // 9) Стабильность как множитель влияния вторичных факторов
+    const stab = calcStability(games) / 100;                                    // 0..1
+    const stabMul = 0.7 + 0.3 * stab;                                           // 0.7..1.0
+
+    // Комбинация: берём модернизированную базу и добавляем взвешенные сигналы
+    const raw = (
+      0.55 * adj +                    // основа из текущей модели
+      0.12 * setDom +                 // доминирование по сетам
+      0.12 * ptDom +                  // доминирование по очкам
+      0.10 * trend +                  // тренд
+      0.06 * dryScore +               // сухие победы/поражения
+      0.10 * btEdge +                 // BT преимущество в паре
+      0.05 * h2hImpact +              // влияние H2H (ограниченно)
+      varPenalty +                    // штраф за высокую вариативность
+      fatiguePenalty                  // усталость сегодня
+    ) * stabMul;                      // более стабильные игроки = более надёжная сила
+
+    // Ограничиваем разумный диапазон
+    return Math.max(-2.0, Math.min(2.0, raw));
   }
 
   // --- Преобразование данных для red flags ---
@@ -1000,6 +1080,20 @@
       }).join(", ");
     }).filter(Boolean);
 
+    // --- Усиленный расчёт силы для отображения ---
+    let strengthDisplayA = calculateDisplayStrength(sA).toFixed(1);
+    let strengthDisplayB = calculateDisplayStrength(sB).toFixed(1);
+    try {
+      const enhancedA = calculateEnhancedRawStrength(A.games, B.games, h2hData, A.player, B.player, btResult);
+      const enhancedB = calculateEnhancedRawStrength(B.games, A.games, {
+        wA: h2hData.wB, wB: h2hData.wA, total: h2hData.total
+      }, B.player, A.player, btResult);
+      strengthDisplayA = calculateDisplayStrength(enhancedA).toFixed(1);
+      strengthDisplayB = calculateDisplayStrength(enhancedB).toFixed(1);
+    } catch (e) {
+      console.warn('Enhanced strength fallback to legacy:', e);
+    }
+
 
     // --- Red Flags анализ ---
     let redFlags = null;
@@ -1016,7 +1110,7 @@
       data: {
         playerA: {
           name: A.player,
-          strength: calculateDisplayStrength(sA).toFixed(1),
+          strength: strengthDisplayA,
           probability: (probFinal * 100).toFixed(1),
           h2h: `${h2hData.wA}-${h2hData.wB}`,
           stability: calcStability(A.games),
@@ -1033,7 +1127,7 @@
         },
         playerB: {
           name: B.player,
-          strength: calculateDisplayStrength(sB).toFixed(1),
+          strength: strengthDisplayB,
           probability: ((1 - probFinal) * 100).toFixed(1),
           h2h: `${h2hData.wB}-${h2hData.wA}`,
           stability: calcStability(B.games),

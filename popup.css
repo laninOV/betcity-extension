@@ -3,24 +3,35 @@
   --red: #e03a3a;
   --yellow: #ffd600;
   --blue-bg: #2f3355;
+  --blue-bg2: #2a2f51;
   --main-shadow: 0 4px 24px rgba(43, 53, 130, 0.12);
   --card-bg: rgba(37, 42, 75, 0.97);
   --table-header: #4355a7;
   --text-main: #eaefff;
   --text-light: #bac9e8;
   --scroll: #586ab6;
+
+  /* Popup size controls (Chrome caps ~800x600) */
+  --popup-width: 800px;
+  --popup-height: 600px;
+}
+
+html,
+body {
+  width: var(--popup-width);
+  height: var(--popup-height);
+  min-width: var(--popup-width);
+  min-height: var(--popup-height);
 }
 
 body {
-  width: 1200px !important;
-  height: 800px !important;
   margin: 0;
   padding: 0;
   box-sizing: border-box;
   background: linear-gradient(135deg, #4158d0 0%, #667eea 50%, #764ba2 100%);
   background-size: cover;
   color: var(--text-main);
-  font-size: 14px;
+  font-size: 13px;
   font-family: 'Segoe UI', 'Roboto', 'Arial', sans-serif;
   overflow-y: auto;
   overflow-x: hidden;
@@ -30,12 +41,12 @@ body {
   width: 100%;
   min-height: 100%;
   background: var(--blue-bg2);
-  border-radius: 16px;
+  border-radius: 12px;
   box-shadow: var(--main-shadow);
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  padding: 16px;
+  padding: 12px;
 }
 
 header {
@@ -187,42 +198,96 @@ h1 {
 .stats-card {
   background: var(--card-bg);
   box-shadow: 0 2px 12px #191e3028;
-  padding: 16px;
-  border-radius: 12px;
-  font-size: 14px;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 13px;
   color: #eaefff;
 }
 
 .stats-card h3 {
-  margin: 0 0 12px 0;
-  font-size: 13px;
+  margin: 0 0 10px 0;
+  font-size: 12px;
   color: #a3bfff;
   font-weight: 700;
+  letter-spacing: 0.2px;
 }
 
 .mini-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 12px;
   color: #c6ccdf;
 }
 
 .mini-table th,
 .mini-table td {
-  padding: 8px 6px;
+  padding: 6px;
   text-align: center;
   border-bottom: 1px solid #353a5c;
+}
+
+/* Выравнивание первой колонки по левому краю */
+.mini-table thead th:first-child,
+.mini-table tbody td:first-child {
+  text-align: left;
 }
 
 .mini-table th {
   background: #273068;
   color: #cde0ff;
-  font-size: 12px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
 .mini-table tr:last-child td,
 .mini-table tr:last-child th {
   border-bottom: none;
+}
+
+/* Нежные зебра-полосы для единообразия всех таблиц */
+.mini-table tbody tr:nth-child(odd) {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* H2H строки в таблице сетов, единый стиль */
+.mini-table tbody tr.h2h-summary-row {
+  background: rgba(67, 85, 167, 0.22);
+  border-top: 1px solid #3e4c83;
+  color: #e0e7ff;
+}
+
+.mini-table tbody tr.h2h-set-row {
+  background: rgba(39, 48, 104, 0.18);
+  color: #dbeafe;
+}
+
+/* Подсветка высоких показателей в сетах (тёмная тема) */
+.set-perfect {
+  background: rgba(34, 197, 94, 0.14);
+  color: #86efac;
+  font-weight: 700;
+  border-radius: 4px;
+  padding: 2px 4px;
+  border: 1px solid rgba(34, 197, 94, 0.35);
+}
+
+.set-excellent {
+  background: rgba(59, 130, 246, 0.16);
+  color: #93c5fd;
+  font-weight: 600;
+  border-radius: 4px;
+  padding: 2px 4px;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+}
+
+.set-good {
+  background: rgba(245, 158, 11, 0.16);
+  color: #fde68a;
+  font-weight: 600;
+  border-radius: 4px;
+  padding: 2px 4px;
+  border: 1px solid rgba(245, 158, 11, 0.35);
 }
 
 .match-visualization {
@@ -232,12 +297,12 @@ h1 {
 .match-viz-row {
   display: flex;
   align-items: center;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .player-name-viz {
-  width: 120px;
-  font-size: 13px;
+  width: 100px;
+  font-size: 12px;
   color: #bacef5;
   margin-right: 10px;
   overflow: hidden;
@@ -246,8 +311,8 @@ h1 {
 }
 
 .dots-viz {
-  font-size: 14px;
-  letter-spacing: 2px;
+  font-size: 12px;
+  letter-spacing: 1px;
   color: #fff;
 }
 
@@ -260,6 +325,15 @@ h1 {
 
 .legend-item {
   margin-right: 15px;
+}
+
+/* Аккуратный разрыв между таблицей и визуализацией внутри одной карточки */
+.stats-card .mini-table + h3 {
+  margin-top: 10px;
+}
+.stats-card .mini-table + h3 + .match-visualization {
+  border-top: 1px solid #353a5c;
+  padding-top: 10px;
 }
 
 .compact-stats {
@@ -308,8 +382,14 @@ h1 {
 .two-column {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+/* Подсветка фаворита в таблице вероятностей */
+.favorite-value {
+  color: #ffd600;
+  font-weight: 700;
 }
 
 /* Стили для блока ТБ 3.5 */
