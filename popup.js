@@ -92,7 +92,7 @@ document.addEventListener('DOMContentLoaded', () => {
         })
         .slice(0, 3);
 
-      topBTScoresBody.innerHTML = top3bt.map(item => {
+      topBTScoresBody.innerHTML = top3bt.map((item) => {
         // Обработка вероятности для новой BT модели
         let probability;
         if (typeof item.probability === 'number') {
@@ -102,7 +102,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
           probability = parseFloat(item.probability || 0).toFixed(1) + '%';
         }
-        
         return `<tr><td>${item.score}</td><td>${probability}</td></tr>`;
       }).join('');
     }
@@ -139,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const probB = parseFloat(data.playerB.probability);
     const isFavA = probA > probB;
     
-    // Добавляем классы для подсветки фаворита
+    // Добавляем классы для подсветки фаворита только по вероятности (как раньше)
     if (isFavA) {
       if (mainProbabilityA) mainProbabilityA.className = 'favorite-value';
       if (mainProbabilityB) mainProbabilityB.className = '';
@@ -178,12 +177,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ⚡ Comeback ability
     const comeback1 = document.getElementById('comeback1');
+    const comeback2 = document.getElementById('comeback2');
     if (comeback1) {
       const v = data.playerA.comebackAbility;
       comeback1.textContent = (typeof v === 'number') ? `${v}%` : '-';
     }
 
-    const comeback2 = document.getElementById('comeback2');
     if (comeback2) {
       const v = data.playerB.comebackAbility;
       comeback2.textContent = (typeof v === 'number') ? `${v}%` : '-';
@@ -238,7 +237,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const scorePoints1 = document.getElementById('scorePoints1');
     if (scorePoints1) scorePoints1.textContent = formatScorePoints(data.playerA.scorePoints);
-    
     const scorePoints2 = document.getElementById('scorePoints2');
     if (scorePoints2) scorePoints2.textContent = formatScorePoints(data.playerB.scorePoints);
   }
@@ -429,7 +427,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setError('Откройте страницу матча на betcity.ru');
         return;
       }
-      
+
       chrome.tabs.sendMessage(tab.id, { action: 'analyze' }, (response) => {
         loading.classList.add('hidden');
         
