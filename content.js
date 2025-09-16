@@ -393,6 +393,22 @@
     return Math.round(Math.max(0, Math.min(100, combined01 * 100)));
   }
 
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
   // --- Подсчёт сухих побед/поражений ---
   function calcDryGames(games) {
     return {
@@ -420,6 +436,117 @@
       wins: wins,
       losses: losses
     };
+  }
+
+  // --- Паттерны по последним 5 матчам ---
+  function calculateThirdSetProbability(games) {
+    const recent = (games || []).slice(0, 5);
+    let wins3rd = 0, total3rd = 0;
+    recent.forEach(match => {
+      if (Array.isArray(match.pts) && match.pts.length >= 3) {
+        const [a3, b3] = match.pts[2];
+        total3rd++;
+        // Проверка решающего характера 3-го сета, как в описании
+        if (((a3 || 0) > (b3 || 0) && (match.playerSets || 0) >= 2) ||
+            ((b3 || 0) > (a3 || 0) && (match.oppSets || 0) >= 2)) {
+          wins3rd += ((a3 || 0) > (b3 || 0)) ? 1 : 0;
+        }
+      }
+    });
+    if (!total3rd) return null;
+    return wins3rd / total3rd;
+  }
+
+  function calculateAfterFirstSetLoss(games) {
+    const recent = (games || []).slice(0, 5);
+    let wins = 0, total = 0;
+    recent.forEach(match => {
+      if (Array.isArray(match.pts) && match.pts.length >= 1) {
+        const [a1, b1] = match.pts[0];
+        const down0_1 = ((a1 || 0) < (b1 || 0));
+        if (down0_1) {
+          total++;
+          if (match.win) wins++;
+        }
+      }
+    });
+    if (!total) return null;
+    return wins / total;
+  }
+
+  function calculateAfterTieOneOne(games) {
+    const recent = (games || []).slice(0, 5);
+    let wins = 0, total = 0;
+    recent.forEach(match => {
+      if (Array.isArray(match.pts) && match.pts.length >= 2) {
+        const [a1, b1] = match.pts[0];
+        const [a2, b2] = match.pts[1];
+        const tied1_1 = (((a1 || 0) > (b1 || 0) && (a2 || 0) < (b2 || 0)) ||
+                          ((a1 || 0) < (b1 || 0) && (a2 || 0) > (b2 || 0)));
+        if (tied1_1) {
+          total++;
+          if (match.win) wins++;
+        }
+      }
+    });
+    if (!total) return null;
+    return wins / total;
+  }
+
+  function calculateRecentPatterns(games) {
+    return {
+      pattern3rd: calculateThirdSetProbability(games),
+      after0_1: calculateAfterFirstSetLoss(games),
+      after1_1: calculateAfterTieOneOne(games),
+    };
+  }
+
+  // --- ⚡ Comeback ability (Bo5, отставание 0:1 или 0:2) ---
+  function calcComebackAbility(games) {
+    if (!Array.isArray(games) || games.length === 0) return null;
+    const tau = (cfg && typeof cfg.getTau === 'function') ? cfg.getTau('table_tennis') : 0.15;
+
+    let denom = 0; // суммарный вес матчей с дефицитом (0:1 или 0:2)
+    let numer = 0; // суммарный вес успешных камбэков
+
+    for (const g of games) {
+      const winnerTo3 = (g && (g.playerSets === 3 || g.oppSets === 3));
+      const pts = g && Array.isArray(g.pts) ? g.pts : null;
+      if (!winnerTo3 || !pts || pts.length === 0) continue; // учитываем только Bo5 с сетами
+
+      // Вес по давности матча
+      const diffDays = typeof g.diffDays === 'number' ? Math.max(0, g.diffDays) : 0;
+      const w = Math.exp(-tau * diffDays);
+
+      // Проверяем отставание 0:1 после 1-го сета
+      let trailed = false;
+      if (pts.length >= 1) {
+        const [a0, b0] = pts[0] || [0, 0];
+        if ((a0 || 0) < (b0 || 0)) {
+          trailed = true; // 0:1
+        }
+      }
+
+      // Если не отставал 0:1, проверим 0:2 после 2-х сетов
+      if (!trailed && pts.length >= 2) {
+        let wins2 = 0;
+        for (let i = 0; i < 2; i++) {
+          const [ai, bi] = pts[i] || [0, 0];
+          if ((ai || 0) > (bi || 0)) wins2++;
+        }
+        if (wins2 === 0) {
+          trailed = true; // 0:2
+        }
+      }
+
+      if (trailed) {
+        denom += w;
+        if (g.win) numer += w; // успешный камбэк
+      }
+    }
+
+    if (denom <= 0) return null; // нет матчей с дефицитом -> N/A
+    return Math.round((numer / denom) * 100);
   }
 
   // --- Система очков за победы/поражения ---
@@ -917,6 +1044,8 @@
     // Новые метрики
     const matchesTodayA = calcMatchesToday(A.games);
     const matchesTodayB = calcMatchesToday(B.games);
+    const comebackAbilityA = calcComebackAbility(A.games);
+    const comebackAbilityB = calcComebackAbility(B.games);
     const scorePointsA = calculateScorePoints(A.games);
     const scorePointsB = calculateScorePoints(B.games);
 
@@ -924,8 +1053,8 @@
     const stabWeight = cfg.stabilityWeight || 0.6;
     
     // Более сложные факторы стабильности
-    const stabA = calcStability(A.games) / 100; // 0-1
-    const stabB = calcStability(B.games) / 100; // 0-1
+    const stabA = calcStability(A.games) / 100; // 0-1 (legacy)
+    const stabB = calcStability(B.games) / 100; // 0-1 (legacy)
     const stabFactorA = 0.7 + 0.3 * stabA; // 0.7-1.0
     const stabFactorB = 0.7 + 0.3 * stabB; // 0.7-1.0
     
@@ -1114,6 +1243,8 @@
           probability: (probFinal * 100).toFixed(1),
           h2h: `${h2hData.wA}-${h2hData.wB}`,
           stability: calcStability(A.games),
+          stability_old: calcStability(A.games),
+          // Новая стабильность удалена
           s2: calcBaseS(A.games, 2).toFixed(3),
           s5: calcBaseS(A.games, 5).toFixed(3),
           dryWins: calcDryGames(A.games).wins,
@@ -1123,7 +1254,9 @@
           visualization: createMatchVisualization(A.games),
           // Новые метрики
           matchesToday: matchesTodayA,
+          comebackAbility: comebackAbilityA,
           scorePoints: scorePointsA,
+          patterns: calculateRecentPatterns(A.games),
         },
         playerB: {
           name: B.player,
@@ -1131,6 +1264,8 @@
           probability: ((1 - probFinal) * 100).toFixed(1),
           h2h: `${h2hData.wB}-${h2hData.wA}`,
           stability: calcStability(B.games),
+          stability_old: calcStability(B.games),
+          // Новая стабильность удалена
           s2: calcBaseS(B.games, 2).toFixed(3),
           s5: calcBaseS(B.games, 5).toFixed(3),
           dryWins: calcDryGames(B.games).wins,
@@ -1140,7 +1275,9 @@
           visualization: createMatchVisualization(B.games),
           // Новые метрики
           matchesToday: matchesTodayB,
+          comebackAbility: comebackAbilityB,
           scorePoints: scorePointsB,
+          patterns: calculateRecentPatterns(B.games),
         },
         confidence: getConfidence(probFinal, 1 - probFinal, vA, vB, h2hData.total),
         favorite: probFinal > 0.5 ? A.player : B.player,

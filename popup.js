@@ -176,12 +176,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const s5Player2 = document.getElementById('s5Player2');
     if (s5Player2) s5Player2.textContent = formatStrength(data.playerB.s5);
 
-    // Стабильность (0-100)
-    const stability1 = document.getElementById('stability1');
-    if (stability1) stability1.textContent = (typeof data.playerA.stability === 'number') ? `${data.playerA.stability}%` : '-';
+    // ⚡ Comeback ability
+    const comeback1 = document.getElementById('comeback1');
+    if (comeback1) {
+      const v = data.playerA.comebackAbility;
+      comeback1.textContent = (typeof v === 'number') ? `${v}%` : '-';
+    }
 
-    const stability2 = document.getElementById('stability2');
-    if (stability2) stability2.textContent = (typeof data.playerB.stability === 'number') ? `${data.playerB.stability}%` : '-';
+    const comeback2 = document.getElementById('comeback2');
+    if (comeback2) {
+      const v = data.playerB.comebackAbility;
+      comeback2.textContent = (typeof v === 'number') ? `${v}%` : '-';
+    }
+
+    // Стабильность (новая) удалена из интерфейса
 
     const dryWins1 = document.getElementById('dryWins1');
     if (dryWins1) dryWins1.textContent = data.playerA.dryWins;
@@ -370,6 +378,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  function fillPatternsTable(data) {
+    // Заголовки с именами
+    const patName1 = document.getElementById('patName1');
+    if (patName1) patName1.textContent = data.playerA.name;
+    const patName2 = document.getElementById('patName2');
+    if (patName2) patName2.textContent = data.playerB.name;
+
+    const fmt = (v) => (v == null ? '-' : `${Math.round(v * 100)}%`);
+
+    const pattern3rd1 = document.getElementById('pattern3rd1');
+    if (pattern3rd1) pattern3rd1.textContent = fmt(data.playerA.patterns?.pattern3rd);
+    const pattern3rd2 = document.getElementById('pattern3rd2');
+    if (pattern3rd2) pattern3rd2.textContent = fmt(data.playerB.patterns?.pattern3rd);
+
+    const after01_1 = document.getElementById('after01_1');
+    if (after01_1) after01_1.textContent = fmt(data.playerA.patterns?.after0_1);
+    const after01_2 = document.getElementById('after01_2');
+    if (after01_2) after01_2.textContent = fmt(data.playerB.patterns?.after0_1);
+
+    const after11_1 = document.getElementById('after11_1');
+    if (after11_1) after11_1.textContent = fmt(data.playerA.patterns?.after1_1);
+    const after11_2 = document.getElementById('after11_2');
+    if (after11_2) after11_2.textContent = fmt(data.playerB.patterns?.after1_1);
+  }
+
 
   function setError(message) {
     loading.classList.add('hidden');
@@ -421,6 +454,7 @@ document.addEventListener('DOMContentLoaded', () => {
           fillStatsTables(d);
           fillVisualization(d);
           fillSetsTable(d);
+          fillPatternsTable(d);
           
           // Логирование для отладки новой BT модели
           if (d.bt_favorite) {

@@ -56,7 +56,7 @@
             <tbody>
               <tr><td>S₂</td><td id="s2Player1">-</td><td id="s2Player2">-</td></tr>
               <tr><td>S₅</td><td id="s5Player1">-</td><td id="s5Player2">-</td></tr>
-              <tr><td>Стабильность</td><td id="stability1">-</td><td id="stability2">-</td></tr>
+              <tr><td>⚡ Comeback ability</td><td id="comeback1">-</td><td id="comeback2">-</td></tr>
               <tr><td>Сухие победы</td><td id="dryWins1">-</td><td id="dryWins2">-</td></tr>
               <tr><td>Сухие поражения</td><td id="dryLosses1">-</td><td id="dryLosses2">-</td></tr>
               <tr><td>Матчей сегодня</td><td id="matchesToday1">-</td><td id="matchesToday2">-</td></tr>
@@ -85,6 +85,23 @@
               <tr><td>Стабильность</td><td id="mainStabilityA">-</td><td id="mainStabilityB">-</td></tr>
             </tbody>
           </table>
+
+          <!-- Паттерны (последние 5 матчей) в том же блоке -->
+          <h3>Паттерны (последние 5 матчей)</h3>
+          <table class="mini-table" aria-label="Паттерны по последним 5 матчам">
+            <thead>
+              <tr>
+                <th>Паттерн</th>
+                <th id="patName1">Игрок 1</th>
+                <th id="patName2">Игрок 2</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>3-й сет: победа</td><td id="pattern3rd1">-</td><td id="pattern3rd2">-</td></tr>
+              <tr><td>Победа после 0:1</td><td id="after01_1">-</td><td id="after01_2">-</td></tr>
+              <tr><td>Победа при 1:1</td><td id="after11_1">-</td><td id="after11_2">-</td></tr>
+            </tbody>
+          </table>
         </section>
         <section class="stats-card">
           <h3>Победы в сетах (общая статистика)</h3>
@@ -95,9 +112,9 @@
             <tbody id="setsTableBody"></tbody>
           </table>
         </section>
+        
       </div>
 
-      
 
     </div>
 
