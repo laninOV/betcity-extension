@@ -245,6 +245,11 @@ h1 {
   border-bottom: none;
 }
 
+/* Небольшой отступ для таблицы сетов */
+#setsTable {
+  margin-top: 6px;
+}
+
 /* Нежные зебра-полосы для единообразия всех таблиц */
 .mini-table tbody tr:nth-child(odd) {
   background: rgba(255, 255, 255, 0.03);
@@ -255,6 +260,11 @@ h1 {
   background: rgba(67, 85, 167, 0.22);
   border-top: 1px solid #3e4c83;
   color: #e0e7ff;
+}
+
+/* Небольшой вертикальный отступ перед блоком H2H внутри таблицы сетов */
+.mini-table tbody tr.h2h-summary-row td {
+  padding-top: 10px;
 }
 
 .mini-table tbody tr.h2h-set-row {
@@ -400,6 +410,55 @@ h1 {
   border-radius: 4px;
   padding: 2px 6px;
   border: 1px solid rgba(255, 214, 0, 0.35);
+}
+
+/* Красная подсветка слабых/рискованных показателей */
+.metric-bad {
+  background: rgba(224, 58, 58, 0.18);
+  color: #ffd1d1;
+  font-weight: 700;
+  border-radius: 4px;
+  padding: 2px 6px;
+  border: 1px solid rgba(224, 58, 58, 0.35);
+}
+
+/* Зелёная подсветка для явного преимущества */
+.metric-good {
+  background: rgba(39, 197, 126, 0.22);
+  color: #d4ffef;
+  font-weight: 700;
+  border-radius: 4px;
+  padding: 2px 6px;
+  border: 1px solid rgba(39, 197, 126, 0.45);
+}
+
+/* Зеленые градации для положительного преимущества по очкам */
+.metric-green-light {
+  background: rgba(39, 197, 126, 0.18);
+  color: #c9f7e4;
+  font-weight: 700;
+  border-radius: 4px;
+  padding: 2px 6px;
+  border: 1px solid rgba(39, 197, 126, 0.35);
+}
+
+.metric-green-strong {
+  background: rgba(39, 197, 126, 0.30);
+  color: #e6fff3;
+  font-weight: 800;
+  border-radius: 4px;
+  padding: 2px 6px;
+  border: 1px solid rgba(39, 197, 126, 0.55);
+}
+
+/* Ярко-красная подсветка для некорректного случая (+/+ или -/-) */
+.metric-danger {
+  background: rgba(255, 77, 77, 0.28);
+  color: #ffe0e0;
+  font-weight: 800;
+  border-radius: 4px;
+  padding: 2px 6px;
+  border: 1px solid rgba(255, 77, 77, 0.55);
 }
 
 /* Универсальные бейджи для важных метрик */

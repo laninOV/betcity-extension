@@ -113,8 +113,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const mainPlayerB = document.getElementById('mainPlayerB');
     const mainStrengthA = document.getElementById('mainStrengthA');
     const mainStrengthB = document.getElementById('mainStrengthB');
-    const mainProbabilityA = document.getElementById('mainProbabilityA');
-    const mainProbabilityB = document.getElementById('mainProbabilityB');
     const mainH2HA = document.getElementById('mainH2HA');
     const mainH2HB = document.getElementById('mainH2HB');
     const mainStabilityA = document.getElementById('mainStabilityA');
@@ -124,57 +122,71 @@ document.addEventListener('DOMContentLoaded', () => {
     if (mainPlayerB) mainPlayerB.textContent = data.playerB.name;
     if (mainStrengthA) mainStrengthA.textContent = data.playerA.strength;
     if (mainStrengthB) mainStrengthB.textContent = data.playerB.strength;
-    if (mainProbabilityA) mainProbabilityA.textContent = data.playerA.probability + '%';
-    if (mainProbabilityB) mainProbabilityB.textContent = data.playerB.probability + '%';
     if (mainH2HA) mainH2HA.textContent = data.playerA.h2h;
     if (mainH2HB) mainH2HB.textContent = data.playerB.h2h;
-    if (mainStabilityA) mainStabilityA.textContent =
-      typeof data.playerA.stability === 'number' ? `${data.playerA.stability}%` : '-';
-    if (mainStabilityB) mainStabilityB.textContent =
-      typeof data.playerB.stability === 'number' ? `${data.playerB.stability}%` : '-';
+    // Стабильность приходит как 0..1 — приведём к % и округлим
+    const fmtStab = (val) => {
+      if (typeof val !== 'number' || isNaN(val)) return '-';
+      const v = (val <= 1 ? val * 100 : val);
+      return `${Math.round(v)}%`;
+    };
+    if (mainStabilityA) mainStabilityA.textContent = fmtStab(data.playerA.stability);
+    if (mainStabilityB) mainStabilityB.textContent = fmtStab(data.playerB.stability);
 
-    // Определяем фаворита для подсветки
-    const probA = parseFloat(data.playerA.probability);
-    const probB = parseFloat(data.playerB.probability);
-    const isFavA = probA > probB;
-    
-    // Подсветка вероятности только при явном перевесе
-    const probDelta = Math.abs((isNaN(probA) ? 0 : probA) - (isNaN(probB) ? 0 : probB));
-    const probHighlightThreshold = 10; // п.п.
-    if (mainProbabilityA) mainProbabilityA.classList.remove('favorite-value');
-    if (mainProbabilityB) mainProbabilityB.classList.remove('favorite-value');
-    if (probDelta >= probHighlightThreshold) {
-      if (isFavA && mainProbabilityA) mainProbabilityA.classList.add('favorite-value');
-      if (!isFavA && mainProbabilityB) mainProbabilityB.classList.add('favorite-value');
-    }
+    // Убрали показатель "Вероятность" из основных — подсветки больше нет
 
-    // Жёлтая подсветка ключевых разниц: сила, стабильность, H2H
-    const clearHL = (el) => { if (el) el.classList.remove('metric-highlight'); };
+    // Подсветка: жёлтая — явное преимущество, красная — слабая сторона/риск
+    const clearHL = (el) => {
+      if (!el) return;
+      el.classList.remove('metric-highlight');
+      el.classList.remove('metric-bad');
+      el.classList.remove('favorite-value');
+    };
 
     // Сила: разница >= 12 пунктов (0..100)
     const strA = parseFloat(data.playerA.strength);
     const strB = parseFloat(data.playerB.strength);
     clearHL(mainStrengthA); clearHL(mainStrengthB);
     if (!isNaN(strA) && !isNaN(strB)) {
-      if (strA - strB >= 12) { if (mainStrengthA) mainStrengthA.classList.add('metric-highlight'); }
-      else if (strB - strA >= 12) { if (mainStrengthB) mainStrengthB.classList.add('metric-highlight'); }
+      if (strA - strB >= 12) {
+        if (mainStrengthA) mainStrengthA.classList.add('metric-highlight');
+        if (mainStrengthB) mainStrengthB.classList.add('metric-bad');
+      } else if (strB - strA >= 12) {
+        if (mainStrengthB) mainStrengthB.classList.add('metric-highlight');
+        if (mainStrengthA) mainStrengthA.classList.add('metric-bad');
+      }
     }
 
     // Стабильность: разница >= 15 п.п.
-    const stabA = parseFloat(data.playerA.stability);
-    const stabB = parseFloat(data.playerB.stability);
+    const rawStabA = parseFloat(data.playerA.stability);
+    const rawStabB = parseFloat(data.playerB.stability);
+    const stabA = isNaN(rawStabA) ? NaN : (rawStabA <= 1 ? rawStabA * 100 : rawStabA);
+    const stabB = isNaN(rawStabB) ? NaN : (rawStabB <= 1 ? rawStabB * 100 : rawStabB);
     clearHL(mainStabilityA); clearHL(mainStabilityB);
     if (!isNaN(stabA) && !isNaN(stabB)) {
-      if (stabA - stabB >= 15) { if (mainStabilityA) mainStabilityA.classList.add('metric-highlight'); }
-      else if (stabB - stabA >= 15) { if (mainStabilityB) mainStabilityB.classList.add('metric-highlight'); }
+      const lowStabTh = 40; // низкая стабильность < 40%
+      if (stabA < lowStabTh && mainStabilityA) mainStabilityA.classList.add('metric-bad');
+      if (stabB < lowStabTh && mainStabilityB) mainStabilityB.classList.add('metric-bad');
+      if (stabA - stabB >= 15) {
+        if (mainStabilityA) mainStabilityA.classList.add('metric-highlight');
+        if (mainStabilityB) mainStabilityB.classList.add('metric-bad');
+      } else if (stabB - stabA >= 15) {
+        if (mainStabilityB) mainStabilityB.classList.add('metric-highlight');
+        if (mainStabilityA) mainStabilityA.classList.add('metric-bad');
+      }
     }
 
     // H2H: преимущество >= 3 побед
     clearHL(mainH2HA); clearHL(mainH2HB);
     try {
       const [hA, hB] = (data.playerA.h2h || '0-0').split('-').map(x => parseInt(x, 10));
-      if ((hA - hB) >= 3) { if (mainH2HA) mainH2HA.classList.add('metric-highlight'); }
-      else if ((hB - hA) >= 3) { if (mainH2HB) mainH2HB.classList.add('metric-highlight'); }
+      if ((hA - hB) >= 3) {
+        if (mainH2HA) mainH2HA.classList.add('metric-highlight');
+        if (mainH2HB) mainH2HB.classList.add('metric-bad');
+      } else if ((hB - hA) >= 3) {
+        if (mainH2HB) mainH2HB.classList.add('metric-highlight');
+        if (mainH2HA) mainH2HA.classList.add('metric-bad');
+      }
     } catch (_) {}
   }
 
@@ -185,12 +197,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const statName2 = document.getElementById('statName2');
     if (statName2) statName2.textContent = data.playerB.name;
     
-    // Преобразуем S₂ и S₅ в более понятный формат
+    // Преобразуем S₂ и S₅ к новой шкале 0..100
     const formatStrength = (value) => {
       const num = parseFloat(value);
       if (isNaN(num)) return '-';
-      if (num > 0) return `+${num.toFixed(3)}`;
-      return num.toFixed(3);
+      return String(Math.round(num));
     };
     
     const s2Player1 = document.getElementById('s2Player1');
@@ -204,53 +215,94 @@ document.addEventListener('DOMContentLoaded', () => {
     const s5Player2 = document.getElementById('s5Player2');
     if (s5Player2) s5Player2.textContent = formatStrength(data.playerB.s5);
 
-    // Подсветка S5: |S5| >= 0.30
-    const clearHL = (el) => { if (el) el.classList.remove('metric-highlight'); };
-    clearHL(s5Player1); clearHL(s5Player2);
-    const s5a = parseFloat(data.playerA.s5);
-    const s5b = parseFloat(data.playerB.s5);
-    const s5Th = 0.30;
-    if (!isNaN(s5a) && Math.abs(s5a) >= s5Th) { s5Player1 && s5Player1.classList.add('metric-highlight'); }
-    if (!isNaN(s5b) && Math.abs(s5b) >= s5Th) { s5Player2 && s5Player2.classList.add('metric-highlight'); }
+    // Универсальная подсветка различий (зелёный >=40%, жёлтый >=20%, красный — сильно ниже)
+    (function() {
+      const clearPair = (a, b) => {
+        [a, b].forEach(el => {
+          if (!el) return;
+          el.classList.remove('metric-good','metric-highlight','metric-bad');
+        });
+      };
+      const compareAndColor = (elA, elB, valA, valB, { scale = 'percent', higherBetter = true, green = 0.40, yellow = 0.20 } = {}) => {
+        const a = parseFloat(valA); const b = parseFloat(valB);
+        if (isNaN(a) || isNaN(b)) return;
+        let x = a, y = b;
+        if (!higherBetter) { x = -a; y = -b; }
+        // Нормализуем к 0..1 для процентных метрик
+        const norm = (v) => scale === 'percent' ? Math.max(0, Math.min(1, v / 100)) : v;
+        const nx = norm(x), ny = norm(y);
+        const betterIsA = nx >= ny;
+        const maxv = Math.max(Math.abs(nx), Math.abs(ny), 1e-6);
+        const diffRatio = Math.abs(nx - ny) / maxv; // симметричная относительная разница
+        if (diffRatio >= green) {
+          (betterIsA ? elA : elB)?.classList.add('metric-good');
+          (betterIsA ? elB : elA)?.classList.add('metric-bad');
+        } else if (diffRatio >= yellow) {
+          (betterIsA ? elA : elB)?.classList.add('metric-highlight');
+        }
+      };
 
-    // ⚡ Comeback ability
+      // S2/S5 — больше = лучше
+      clearPair(s2Player1, s2Player2);
+      clearPair(s5Player1, s5Player2);
+      compareAndColor(s2Player1, s2Player2, data.playerA.s2, data.playerB.s2, { scale: 'percent', higherBetter: true });
+      compareAndColor(s5Player1, s5Player2, data.playerA.s5, data.playerB.s5, { scale: 'percent', higherBetter: true });
+    })();
+
+    // ⚡ Comeback ability (процент, сравнение A vs B)
     const comeback1 = document.getElementById('comeback1');
     const comeback2 = document.getElementById('comeback2');
-    if (comeback1) {
-      const v = data.playerA.comebackAbility;
-      const val = (typeof v === 'number') ? v : null;
-      comeback1.textContent = (val != null) ? `${val}%` : '-';
-      if (val != null) {
-        comeback1.classList.toggle('metric-highlight', val >= 60);
-      } else {
-        comeback1.classList.remove('metric-highlight');
-      }
-    }
-
-    if (comeback2) {
-      const v = data.playerB.comebackAbility;
-      const val = (typeof v === 'number') ? v : null;
-      comeback2.textContent = (val != null) ? `${val}%` : '-';
-      if (val != null) {
-        comeback2.classList.toggle('metric-highlight', val >= 60);
-      } else {
-        comeback2.classList.remove('metric-highlight');
+    const cA = (typeof data.playerA.comebackAbility === 'number') ? data.playerA.comebackAbility : null;
+    const cB = (typeof data.playerB.comebackAbility === 'number') ? data.playerB.comebackAbility : null;
+    if (comeback1) comeback1.textContent = (cA != null) ? `${cA}%` : '-';
+    if (comeback2) comeback2.textContent = (cB != null) ? `${cB}%` : '-';
+    if (comeback1 && comeback2 && cA != null && cB != null) {
+      [comeback1, comeback2].forEach(el => { el.classList.remove('metric-good','metric-highlight','metric-bad'); });
+      // больше = лучше
+      const betterIsA = (cA >= cB);
+      const maxv = Math.max(Math.abs(cA), Math.abs(cB), 1e-6);
+      const diffRatio = Math.abs(cA - cB) / maxv;
+      if (diffRatio >= 0.40) {
+        (betterIsA ? comeback1 : comeback2).classList.add('metric-good');
+        (betterIsA ? comeback2 : comeback1).classList.add('metric-bad');
+      } else if (diffRatio >= 0.20) {
+        (betterIsA ? comeback1 : comeback2).classList.add('metric-highlight');
       }
     }
 
     // Стабильность (новая) удалена из интерфейса
 
     const dryWins1 = document.getElementById('dryWins1');
-    if (dryWins1) dryWins1.textContent = data.playerA.dryWins;
+    if (dryWins1) {
+      dryWins1.textContent = data.playerA.dryWins;
+      dryWins1.classList.remove('metric-highlight');
+      dryWins1.classList.remove('metric-bad');
+      if ((+data.playerA.dryWins || 0) >= 3) dryWins1.classList.add('metric-highlight');
+    }
     
     const dryWins2 = document.getElementById('dryWins2');
-    if (dryWins2) dryWins2.textContent = data.playerB.dryWins;
+    if (dryWins2) {
+      dryWins2.textContent = data.playerB.dryWins;
+      dryWins2.classList.remove('metric-highlight');
+      dryWins2.classList.remove('metric-bad');
+      if ((+data.playerB.dryWins || 0) >= 3) dryWins2.classList.add('metric-highlight');
+    }
     
     const dryLosses1 = document.getElementById('dryLosses1');
-    if (dryLosses1) dryLosses1.textContent = data.playerA.dryLosses;
+    if (dryLosses1) {
+      dryLosses1.textContent = data.playerA.dryLosses;
+      dryLosses1.classList.remove('metric-highlight');
+      dryLosses1.classList.remove('metric-bad');
+      if ((+data.playerA.dryLosses || 0) >= 3) dryLosses1.classList.add('metric-bad');
+    }
     
     const dryLosses2 = document.getElementById('dryLosses2');
-    if (dryLosses2) dryLosses2.textContent = data.playerB.dryLosses;
+    if (dryLosses2) {
+      dryLosses2.textContent = data.playerB.dryLosses;
+      dryLosses2.classList.remove('metric-highlight');
+      dryLosses2.classList.remove('metric-bad');
+      if ((+data.playerB.dryLosses || 0) >= 3) dryLosses2.classList.add('metric-bad');
+    }
     
     // Новые метрики - матчи сегодня с цветовой индикацией
     const matchesToday1 = document.getElementById('matchesToday1');
@@ -289,24 +341,105 @@ document.addEventListener('DOMContentLoaded', () => {
     if (scorePoints1) scorePoints1.textContent = formatScorePoints(data.playerA.scorePoints);
     const scorePoints2 = document.getElementById('scorePoints2');
     if (scorePoints2) scorePoints2.textContent = formatScorePoints(data.playerB.scorePoints);
+
+    // Доп. подсветка: матчи сегодня и очковые баллы (без изменения содержимого)
+    // matchesToday1/2
+    (function() {
+      const el1 = document.getElementById('matchesToday1');
+      const el2 = document.getElementById('matchesToday2');
+      const t1 = data.playerA.matchesToday;
+      const t2 = data.playerB.matchesToday;
+      if (el1 && t1 && typeof t1 === 'object') {
+        el1.classList.remove('metric-highlight');
+        el1.classList.remove('metric-bad');
+        if ((t1.total || 0) >= 3 || (t1.losses || 0) >= 2) el1.classList.add('metric-bad');
+        else if ((t1.wins || 0) >= 2) el1.classList.add('metric-highlight');
+      }
+      if (el2 && t2 && typeof t2 === 'object') {
+        el2.classList.remove('metric-highlight');
+        el2.classList.remove('metric-bad');
+        if ((t2.total || 0) >= 3 || (t2.losses || 0) >= 2) el2.classList.add('metric-bad');
+        else if ((t2.wins || 0) >= 2) el2.classList.add('metric-highlight');
+      }
+    })();
+
+    // Последняя игра (дней назад)
+    (function() {
+      const lastGame1 = document.getElementById('lastGame1');
+      const lastGame2 = document.getElementById('lastGame2');
+      const fmtDays = (n) => {
+        if (n == null || isNaN(n)) return '-';
+        const d = Math.max(0, parseInt(n, 10));
+        const lastTwo = d % 100;
+        const lastOne = d % 10;
+        let word = 'дней';
+        if (lastTwo < 11 || lastTwo > 14) {
+          if (lastOne === 1) word = 'день';
+          else if (lastOne >= 2 && lastOne <= 4) word = 'дня';
+        }
+        return `${d} ${word}`;
+      };
+      if (lastGame1) lastGame1.textContent = fmtDays(data.playerA.lastGameDays);
+      if (lastGame2) lastGame2.textContent = fmtDays(data.playerB.lastGameDays);
+    })();
+
+    // scorePoints1/2 — подсветка по разнице totalPoints (только когда знаки разные)
+    (function() {
+      const sp1 = document.getElementById('scorePoints1');
+      const sp2 = document.getElementById('scorePoints2');
+      if (!sp1 || !sp2) return;
+      const clear = (el) => el && el.classList.remove(
+        'metric-highlight','metric-bad','metric-green-light','metric-green-strong','metric-danger'
+      );
+      clear(sp1); clear(sp2);
+
+      const tp1 = parseInt(data.playerA?.scorePoints?.totalPoints, 10);
+      const tp2 = parseInt(data.playerB?.scorePoints?.totalPoints, 10);
+      if (isNaN(tp1) || isNaN(tp2)) return;
+
+      const bothPositive = tp1 > 0 && tp2 > 0;
+      const bothNegative = tp1 < 0 && tp2 < 0;
+      const oppositeSign = (tp1 > 0 && tp2 < 0) || (tp1 < 0 && tp2 > 0);
+
+      if (bothPositive || bothNegative) {
+        // оба + или оба - — ярко красное, не рассматриваем
+        sp1.classList.add('metric-danger');
+        sp2.classList.add('metric-danger');
+        return;
+      }
+
+      // Считаем разницу только когда знаки строго разные (+/-)
+      if (!oppositeSign) return;
+      const diff = Math.abs(tp1 - tp2);
+      if (diff >= 10) {
+        const p1IsBetter = tp1 > tp2; // положительный больше отрицательного
+        const winEl = p1IsBetter ? sp1 : sp2;
+        // 10..11.99 — светло-зеленый, >=12 — темно-зеленый
+        if (diff >= 12) {
+          winEl.classList.add('metric-green-strong');
+        } else {
+          winEl.classList.add('metric-green-light');
+        }
+      }
+    })();
   }
 
 
 
   function fillVisualization(data) {
-    const isFavA = parseFloat(data.playerA.probability) > 50;
-    
+    // Визуализацию показываем строго в порядке таблиц статистики:
+    // первая строка — Player A, вторая — Player B.
     const vizNameFav = document.getElementById('vizNameFav');
-    if (vizNameFav) vizNameFav.textContent = isFavA ? data.playerA.name : data.playerB.name;
-    
+    if (vizNameFav) vizNameFav.textContent = data.playerA.name;
+
     const vizNameUnd = document.getElementById('vizNameUnd');
-    if (vizNameUnd) vizNameUnd.textContent = isFavA ? data.playerB.name : data.playerA.name;
-    
+    if (vizNameUnd) vizNameUnd.textContent = data.playerB.name;
+
     const matchVizFav = document.getElementById('matchVizFav');
-    if (matchVizFav) matchVizFav.innerHTML = formatVisualization(isFavA ? data.playerA.visualization : data.playerB.visualization);
-    
+    if (matchVizFav) matchVizFav.innerHTML = formatVisualization(data.playerA.visualization);
+
     const matchVizUnd = document.getElementById('matchVizUnd');
-    if (matchVizUnd) matchVizUnd.innerHTML = formatVisualization(isFavA ? data.playerB.visualization : data.playerA.visualization);
+    if (matchVizUnd) matchVizUnd.innerHTML = formatVisualization(data.playerB.visualization);
 
     const h2hVizRow = document.getElementById('h2hVizRow');
     const h2hVizInline = document.getElementById('h2hVizInline');
@@ -434,12 +567,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (patName2) patName2.textContent = data.playerB.name;
 
     const fmt = (v) => (v == null ? '-' : `${Math.round(v * 100)}%`);
-    const clearHL = (el) => { if (el) el.classList.remove('metric-highlight'); };
+    const clearHL = (el) => { if (el) { el.classList.remove('metric-highlight'); el.classList.remove('metric-bad'); } };
     const applyHL = (el, v) => {
       if (!el) return;
       clearHL(el);
       if (v == null) return;
       if (v >= 0.6) el.classList.add('metric-highlight');
+      if (v <= 0.35) el.classList.add('metric-bad');
     };
 
     const pattern3rd1 = document.getElementById('pattern3rd1');
@@ -468,6 +602,63 @@ document.addEventListener('DOMContentLoaded', () => {
     const p11b = data.playerB.patterns?.after1_1 ?? null;
     if (after11_2) after11_2.textContent = fmt(p11b);
     applyHL(after11_2, p11b);
+  }
+
+  function fillNonBTProbability(data) {
+    const aNameEl = document.getElementById('probNoBtNameA');
+    const bNameEl = document.getElementById('probNoBtNameB');
+    const aValEl = document.getElementById('probNoBtA');
+    const bValEl = document.getElementById('probNoBtB');
+    if (aNameEl) aNameEl.textContent = data.playerA.name;
+    if (bNameEl) bNameEl.textContent = data.playerB.name;
+    let a = data.playerA?.nonBTProbability;
+    let b = data.playerB?.nonBTProbability;
+    // Фоллбэк: если nonBTProbability не пришла, используем общую вероятность из модели (без BT)
+    if (a == null || isNaN(parseFloat(a))) a = data.playerA?.probability;
+    if (b == null || isNaN(parseFloat(b))) b = data.playerB?.probability;
+    if (aValEl) aValEl.textContent = (a != null && !isNaN(parseFloat(a))) ? (parseFloat(a).toFixed(1) + '%') : '-';
+    if (bValEl) bValEl.textContent = (b != null && !isNaN(parseFloat(b))) ? (parseFloat(b).toFixed(1) + '%') : '-';
+  }
+
+  function fillCommonOpponents(data) {
+    const block = document.getElementById('commonOppBlock');
+    const summaryEl = document.getElementById('commonOppSummary');
+    const nameA = document.getElementById('commonOppNameA');
+    const nameB = document.getElementById('commonOppNameB');
+    const tbody = document.getElementById('commonOppTableBody');
+
+    if (nameA) nameA.textContent = data.playerA.name;
+    if (nameB) nameB.textContent = data.playerB.name;
+
+    const items = data.commonOpponents || [];
+    if (!items.length) {
+      if (block) block.style.display = 'none';
+      return;
+    }
+    if (block) block.style.display = '';
+
+    if (summaryEl) summaryEl.textContent = data.commonOppSummary || '';
+    if (tbody) tbody.innerHTML = '';
+
+    const fmtRow = (o) => {
+      const pts = (o.pointsDiff > 0 ? '+' : '') + (o.pointsDiff || 0);
+      return `${o.wins}-${o.losses} (сеты ${o.setsWon}-${o.setsLost}, очки ${pts})`;
+    };
+
+    items.forEach(row => {
+      const adv = row.advantage;
+      const aCellClass = adv === 'A' ? 'metric-highlight' : (adv === 'B' ? 'metric-bad' : '');
+      const bCellClass = adv === 'B' ? 'metric-highlight' : (adv === 'A' ? 'metric-bad' : '');
+      const advLabel = adv === 'A' ? data.playerA.name : (adv === 'B' ? data.playerB.name : '—');
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${row.opponent}</td>
+        <td class="${aCellClass}">${fmtRow(row.a)}</td>
+        <td class="${bCellClass}">${fmtRow(row.b)}</td>
+        <td>${advLabel}</td>
+      `;
+      tbody && tbody.appendChild(tr);
+    });
   }
 
 
@@ -519,9 +710,11 @@ document.addEventListener('DOMContentLoaded', () => {
           fillTop3Tables(d);
           fillMainTable(d);
           fillStatsTables(d);
+          fillNonBTProbability(d);
           fillVisualization(d);
           fillSetsTable(d);
           fillPatternsTable(d);
+          fillCommonOpponents(d);
           
           // Логирование для отладки новой BT модели
           if (d.bt_favorite) {

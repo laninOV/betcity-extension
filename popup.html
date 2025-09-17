@@ -27,6 +27,20 @@
             <tbody id="topBTScoresBody"></tbody>
           </table>
 
+          <h3>Вероятность (без BT)</h3>
+          <table class="mini-table" aria-label="Комплексная вероятность без Брэдли–Терри">
+            <thead>
+              <tr>
+                <th>Игрок</th>
+                <th>Вероятность</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td id="probNoBtNameA">Игрок 1</td><td id="probNoBtA">-</td></tr>
+              <tr><td id="probNoBtNameB">Игрок 2</td><td id="probNoBtB">-</td></tr>
+            </tbody>
+          </table>
+
           <h3>Визуализация результатов</h3>
           <div class="match-visualization" aria-label="Визуализация последних результатов игроков">
             <div class="match-viz-row">
@@ -41,6 +55,22 @@
               <span class="player-name-viz">H2H:</span>
               <span id="h2hVizInline" class="dots-viz"></span>
             </div>
+          </div>
+
+          <h3>Общие соперники</h3>
+          <div id="commonOppBlock">
+            <div id="commonOppSummary" class="legend"></div>
+            <table class="mini-table" aria-label="Сравнение по общим соперникам">
+              <thead>
+                <tr>
+                  <th>Соперник</th>
+                  <th id="commonOppNameA">Игрок 1</th>
+                  <th id="commonOppNameB">Игрок 2</th>
+                  <th>Преимущество</th>
+                </tr>
+              </thead>
+              <tbody id="commonOppTableBody"></tbody>
+            </table>
           </div>
         </section>
         <section class="stats-card">
@@ -60,6 +90,7 @@
               <tr><td>Сухие победы</td><td id="dryWins1">-</td><td id="dryWins2">-</td></tr>
               <tr><td>Сухие поражения</td><td id="dryLosses1">-</td><td id="dryLosses2">-</td></tr>
               <tr><td>Матчей сегодня</td><td id="matchesToday1">-</td><td id="matchesToday2">-</td></tr>
+              <tr><td>Последняя игра</td><td id="lastGame1">-</td><td id="lastGame2">-</td></tr>
               <tr><td>Очки (5 матчей)</td><td id="scorePoints1">-</td><td id="scorePoints2">-</td></tr>
             </tbody>
           </table>
@@ -80,7 +111,6 @@
             </thead>
             <tbody>
               <tr><td>Сила</td><td id="mainStrengthA">-</td><td id="mainStrengthB">-</td></tr>
-              <tr><td>Вероятность</td><td id="mainProbabilityA">-</td><td id="mainProbabilityB">-</td></tr>
               <tr><td>H2H</td><td id="mainH2HA">-</td><td id="mainH2HB">-</td></tr>
               <tr><td>Стабильность</td><td id="mainStabilityA">-</td><td id="mainStabilityB">-</td></tr>
             </tbody>
@@ -105,7 +135,7 @@
         </section>
         <section class="stats-card">
           <h3>Победы в сетах (общая статистика)</h3>
-          <table class="mini-table">
+          <table class="mini-table" id="setsTable">
             <thead>
               <tr><th>Сет</th><th id="p1Sets">Игрок 1</th><th id="p2Sets">Игрок 2</th></tr>
             </thead>

@@ -1,4 +1,28 @@
 (() => {
+  // Version log and double-injection guard
+  try {
+    const manifest = (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest)
+      ? chrome.runtime.getManifest()
+      : null;
+    const EXT_NAME = (manifest && manifest.name) ? manifest.name : 'Tennis Analysis Pro';
+    const EXT_VERSION = (manifest && manifest.version) ? manifest.version : 'dev';
+    const BUILD_ID = '2025-09-17T00:00:00Z';
+    if (window.__TAP__ && window.__TAP__.injected) {
+      console.warn(`[TAP] Already injected ${window.__TAP__.name} v${window.__TAP__.version} (build ${window.__TAP__.build}). Skipping.`);
+      return;
+    }
+    window.__TAP__ = {
+      injected: true,
+      name: EXT_NAME,
+      version: EXT_VERSION,
+      build: BUILD_ID,
+      injectedAt: new Date().toISOString(),
+    };
+    console.log(`[TAP] Injected ${EXT_NAME} v${EXT_VERSION} (build ${BUILD_ID})`);
+  } catch (e) {
+    console.warn('[TAP] Guard setup failed:', e);
+  }
+
   const cfg = {
     a1: 1,
     a2: 0.5,
@@ -182,7 +206,26 @@
 
     let pairs = pts.split(",").map(p => p.trim().split(":").map(Number));
     if (!pairs.length || pairs.some(p => p.length !== 2 || p.some(isNaN))) return null;
-    const isHome = playersText.indexOf(header) < playersText.indexOf(" - ");
+    // Попробуем аккуратно извлечь имена хозяев/гостей и соперника
+    let homeName = null, awayName = null;
+    const partsStd = playersText.split(' - ');
+    if (partsStd.length === 2) {
+      homeName = partsStd[0].trim();
+      awayName = partsStd[1].trim();
+    } else {
+      const partsAlt = playersText.split(/\s[–—]\s/);
+      if (partsAlt.length === 2) {
+        homeName = partsAlt[0].trim();
+        awayName = partsAlt[1].trim();
+      }
+    }
+
+    let isHome = true;
+    if (homeName && awayName) {
+      isHome = (homeName === header);
+    } else {
+      isHome = playersText.indexOf(header) < playersText.indexOf(" - ");
+    }
     if (!isHome) pairs = pairs.map(([a, b]) => [b, a]);
 
     const playerSets = isHome ? +s1 : +s2;
@@ -203,6 +246,8 @@
       : 0;
     const Mi = cfg.a1 * win + cfg.a2 * sr + cfg.a3 * pr + cfg.a4 * hn + qualityBonus;
 
+    const opponent = (homeName && awayName) ? (isHome ? awayName : homeName) : null;
+
     return {
       win,
       playerSets,
@@ -218,6 +263,7 @@
       playerPoints,
       oppPoints,
       rawScore: scoreText,
+      opponent,
     };
   }
 
@@ -1044,12 +1090,100 @@
     // Новые метрики
     const matchesTodayA = calcMatchesToday(A.games);
     const matchesTodayB = calcMatchesToday(B.games);
+    const lastGameDaysA = (A.games && A.games.length) ? Math.max(0, A.games[0].diffDays || 0) : null;
+    const lastGameDaysB = (B.games && B.games.length) ? Math.max(0, B.games[0].diffDays || 0) : null;
     const comebackAbilityA = calcComebackAbility(A.games);
     const comebackAbilityB = calcComebackAbility(B.games);
     const scorePointsA = calculateScorePoints(A.games);
     const scorePointsB = calculateScorePoints(B.games);
 
-    // Улучшенный расчет вероятности с учетом множественных факторов
+    // --- Общие соперники: агрегирование и сравнение ---
+    const aggregateByOpponent = (games) => {
+      const map = new Map();
+      games.forEach(g => {
+        const opp = g.opponent;
+        if (!opp) return;
+        const prev = map.get(opp) || {
+          matches: 0,
+          wins: 0,
+          losses: 0,
+          setsWon: 0,
+          setsLost: 0,
+          pointsDiff: 0,
+          score: 0,
+          wSum: 0,
+        };
+        const setsWon = g.playerSets || 0;
+        const setsLost = g.oppSets || 0;
+        const ptsDiff = (g.playerPoints || 0) - (g.oppPoints || 0);
+        const w = Math.max(1e-6, g.w || 1);
+        prev.matches += 1;
+        if (g.win) prev.wins += 1; else prev.losses += 1;
+        prev.setsWon += setsWon;
+        prev.setsLost += setsLost;
+        prev.pointsDiff += ptsDiff;
+        // Сбалансированный скор: победа/поражение + вклад по сетам и очкам
+        prev.score += w * ((g.win ? 1 : -1) + 0.3 * (setsWon - setsLost) + 0.02 * ptsDiff);
+        prev.wSum += w;
+        map.set(opp, prev);
+      });
+      return map;
+    };
+
+    const mapA = aggregateByOpponent(A.games);
+    const mapB = aggregateByOpponent(B.games);
+    const commonOpponents = [];
+    let totalAdv = 0;
+    let totalWinsA = 0, totalWinsB = 0;
+    const norm = (o) => (o && o.wSum > 0 ? o.score / o.wSum : 0);
+    for (const opp of mapA.keys()) {
+      if (!mapB.has(opp)) continue;
+      const a = mapA.get(opp);
+      const b = mapB.get(opp);
+      const scoreA = norm(a);
+      const scoreB = norm(b);
+      const advVal = scoreA - scoreB;
+      totalAdv += advVal;
+      totalWinsA += a.wins;
+      totalWinsB += b.wins;
+      commonOpponents.push({
+        opponent: opp,
+        a: {
+          matches: a.matches,
+          wins: a.wins,
+          losses: a.losses,
+          setsWon: a.setsWon,
+          setsLost: a.setsLost,
+          pointsDiff: a.pointsDiff,
+          score: +scoreA.toFixed(3),
+        },
+        b: {
+          matches: b.matches,
+          wins: b.wins,
+          losses: b.losses,
+          setsWon: b.setsWon,
+          setsLost: b.setsLost,
+          pointsDiff: b.pointsDiff,
+          score: +scoreB.toFixed(3),
+        },
+        advantage: advVal > 0.25 ? 'A' : (advVal < -0.25 ? 'B' : '='),
+        advValue: +advVal.toFixed(3),
+      });
+    }
+    // Сортируем по силе отличия
+    commonOpponents.sort((x, y) => Math.abs(y.advValue) - Math.abs(x.advValue));
+    const commonOpponentsTop = commonOpponents.slice(0, 6);
+    const oppCount = commonOpponents.length;
+    let commonOppSummary = 'Общих соперников не найдено.';
+    if (oppCount > 0) {
+      const advOverall = totalAdv;
+      const verdict = advOverall > 0.5 ? `${A.player} лучше выступал против общих соперников`
+                      : advOverall < -0.5 ? `${B.player} лучше выступал против общих соперников`
+                      : 'Паритет по общим соперникам';
+      commonOppSummary = `${verdict} · соперников: ${oppCount}, победы A: ${totalWinsA}, победы B: ${totalWinsB}`;
+    }
+
+    // Улучшенный расчет вероятности с учетом множественных факторов (без BT)
     const stabWeight = cfg.stabilityWeight || 0.6;
     
     // Более сложные факторы стабильности
@@ -1092,8 +1226,147 @@
     prob = Math.min(0.90, Math.max(0.10, prob));
     const probFinal = prob * (1 - smoothing) + 0.5 * smoothing;
 
+    // --- Композитная вероятность без BT с расширенным набором факторов ---
+    const recent2A = A.games.slice(0, 2);
+    const recent2B = B.games.slice(0, 2);
+    const recent5A = A.games.slice(0, 5);
+    const recent5B = B.games.slice(0, 5);
+
+    // Сила (из нашей модели), нормированная
+    const fStrength = Math.tanh((sA - sB) / 1.0); // -1..1
+
+    // Сила на последних 2 и 5 матчах
+    const s2aRaw = calcBaseS(A.games, 2);
+    const s2bRaw = calcBaseS(B.games, 2);
+    const fS2 = Math.tanh((s2aRaw - s2bRaw) / 0.5);
+    const s5aRaw = calcBaseS(A.games, 5);
+    const s5bRaw = calcBaseS(B.games, 5);
+    const fS5 = Math.tanh((s5aRaw - s5bRaw) / 0.5);
+
+    // Победы в последних 2 матчах
+    const w2A = recent2A.filter(g => g.win).length;
+    const w2B = recent2B.filter(g => g.win).length;
+    const fRecent2Wins = Math.tanh((w2A - w2B) / 1.0);
+
+    // Доля выигранных сетов и очков в последних 5 матчах
+    const aggRecent = (arr) => {
+      let setsW = 0, setsT = 0, ptsW = 0, ptsT = 0;
+      arr.forEach(g => {
+        setsW += g.playerSets || 0;
+        setsT += (g.playerSets || 0) + (g.oppSets || 0);
+        ptsW += g.playerPoints || 0;
+        ptsT += (g.playerPoints || 0) + (g.oppPoints || 0);
+      });
+      return {
+        setRate: setsT > 0 ? setsW / setsT : 0.5,
+        ptRate: ptsT > 0 ? ptsW / ptsT : 0.5,
+      };
+    };
+    const ar5 = aggRecent(recent5A);
+    const br5 = aggRecent(recent5B);
+    const fSetShare5 = Math.tanh(((ar5.setRate - br5.setRate)) / 0.12);
+    const fPointShare5 = Math.tanh(((ar5.ptRate - br5.ptRate)) / 0.08);
+
+    // Стабильность
+    const fStability = (stabA - stabB);
+
+    // H2H (без BT) через calcRh2h
+    const R_h2h = calcRh2h(A.player, B.player); // 0..1
+    const fH2H = Math.tanh((R_h2h - 0.5) / 0.12);
+
+    // Общие соперники: нормализуем суммарное преимущество
+    const avgCommonOppAdv = oppCount > 0 ? (totalAdv / oppCount) : 0; // ~ -2..2
+    const fCommonOpp = Math.tanh(avgCommonOppAdv / 0.7);
+
+    // Усталость сегодня
+    const fFatigue = -Math.tanh(((matchesTodayA.total || 0) - (matchesTodayB.total || 0)) / 2);
+
+    // Камбэк-способность
+    const cbA = (typeof comebackAbilityA === 'number') ? comebackAbilityA / 100 : 0.5;
+    const cbB = (typeof comebackAbilityB === 'number') ? comebackAbilityB / 100 : 0.5;
+    const fComeback = cbA - cbB; // -1..1
+
+    // Очковые баллы (5 матчей)
+    const spA = parseFloat(scorePointsA?.averagePoints) || 0;
+    const spB = parseFloat(scorePointsB?.averagePoints) || 0;
+    const fScorePoints = Math.tanh((spA - spB) / 2);
+
+    // Вариативность: меньше — лучше
+    const fVariance = Math.tanh(((vB || 0) - (vA || 0)) / 12);
+
+    // Сухие победы/поражения
+    const dryA = calcDryGames(A.games);
+    const dryB = calcDryGames(B.games);
+    const fDry = Math.tanh((((dryA.wins || 0) - (dryA.losses || 0)) - (((dryB.wins || 0) - (dryB.losses || 0))) ) / 5);
+
+    // Тренд Mi (последние vs предыдущие)
+    const meanMi = (arr) => arr.length ? arr.reduce((s,g)=>s+(g.Mi||0),0)/arr.length : 0;
+    const recent3A = A.games.slice(0,3), older3A = A.games.slice(3,6);
+    const recent3B = B.games.slice(0,3), older3B = B.games.slice(3,6);
+    const trendA = Math.tanh((meanMi(recent3A) - meanMi(older3A)) / 0.4);
+    const trendB = Math.tanh((meanMi(recent3B) - meanMi(older3B)) / 0.4);
+    const fTrend = trendA - trendB;
+
+    // Надёжность факторов (от 0 до 1), чтобы не переоценивать малые выборки
+    const relGames = Math.min(1, (A.games.length + B.games.length) / 16);
+    const relR5 = Math.min(1, (recent5A.length + recent5B.length) / 10);
+    const relR2 = Math.min(1, (recent2A.length + recent2B.length) / 4);
+    const relH2H = Math.min(1, (h2hData.total || 0) / 6);
+    const relCommon = Math.min(1, (oppCount || 0) / 4);
+    const relStab = Math.min(1, (A.games.length + B.games.length) / 12);
+    const relVar = relStab;
+    const relSP = Math.min(1, ((scorePointsA?.matchesAnalyzed || 0) + (scorePointsB?.matchesAnalyzed || 0)) / 10);
+    const relTrend = Math.min(1, (A.games.length + B.games.length) / 12);
+
+    // Базовые веса факторов
+    const w = {
+      strength: 0.34,
+      s5: 0.14,
+      s2: 0.08,
+      setShare5: 0.09,
+      pointShare5: 0.06,
+      stability: 0.06,
+      h2h: 0.08,
+      commonOpp: 0.07,
+      fatigue: 0.05,
+      comeback: 0.03,
+      scorePoints: 0.04,
+      variance: 0.04,
+      dry: 0.03,
+      recent2Wins: 0.04,
+      trend: 0.04,
+    };
+
+    // Взвешиваем факторы с учётом надёжности
+    let z = 0;
+    z += w.strength * relGames * fStrength;
+    z += w.s5 * relR5 * fS5;
+    z += w.s2 * relR2 * fS2;
+    z += w.setShare5 * relR5 * fSetShare5;
+    z += w.pointShare5 * relR5 * fPointShare5;
+    z += w.stability * relStab * fStability;
+    z += w.h2h * relH2H * fH2H;
+    z += w.commonOpp * relCommon * fCommonOpp;
+    z += w.fatigue * relGames * fFatigue;
+    z += w.comeback * relR5 * fComeback;
+    z += w.scorePoints * relSP * fScorePoints;
+    z += w.variance * relVar * fVariance;
+    z += w.dry * relGames * fDry;
+    z += w.recent2Wins * relR2 * fRecent2Wins;
+    z += w.trend * relTrend * fTrend;
+
+    // Мягкое ограничение, чтобы исключить экстремумы
+    z = Math.max(-1.5, Math.min(1.5, z));
+
+    // Преобразуем в вероятность (динамический коэффициент крутизны по качеству данных)
+    const kBeta = 1.4 + 1.0 * relGames; // 1.4..2.4
+    let pNonBT = 1 / (1 + Math.exp(-kBeta * z));
+    // Сглаживание при малом объёме данных
+    pNonBT = Math.min(0.95, Math.max(0.05, pNonBT));
+    const pNonBTSmoothed = pNonBT * (1 - smoothing) + 0.5 * smoothing;
+
     // Улучшенный комбинированный расчет с адаптивными весами
-    const R_h2h = calcRh2h(A.player, B.player);
+    // R_h2h уже вычислен выше; переиспользуем без повторного объявления
     
     // Более точный расчет формы с учетом качества игры
     const R_form = (() => {
@@ -1241,12 +1514,14 @@
           name: A.player,
           strength: strengthDisplayA,
           probability: (probFinal * 100).toFixed(1),
+          nonBTProbability: (pNonBTSmoothed * 100).toFixed(1),
           h2h: `${h2hData.wA}-${h2hData.wB}`,
           stability: calcStability(A.games),
           stability_old: calcStability(A.games),
           // Новая стабильность удалена
-          s2: calcBaseS(A.games, 2).toFixed(3),
-          s5: calcBaseS(A.games, 5).toFixed(3),
+          // S2/S5: теперь выводим в шкале 0..100
+          s2: Math.round(calculateDisplayStrength(calcBaseS(A.games, 2))),
+          s5: Math.round(calculateDisplayStrength(calcBaseS(A.games, 5))),
           dryWins: calcDryGames(A.games).wins,
           dryLosses: calcDryGames(A.games).losses,
           h2hDryLoss: h2hData.dryWinsB,
@@ -1254,6 +1529,7 @@
           visualization: createMatchVisualization(A.games),
           // Новые метрики
           matchesToday: matchesTodayA,
+          lastGameDays: lastGameDaysA,
           comebackAbility: comebackAbilityA,
           scorePoints: scorePointsA,
           patterns: calculateRecentPatterns(A.games),
@@ -1262,12 +1538,14 @@
           name: B.player,
           strength: strengthDisplayB,
           probability: ((1 - probFinal) * 100).toFixed(1),
+           nonBTProbability: ((1 - pNonBTSmoothed) * 100).toFixed(1),
           h2h: `${h2hData.wB}-${h2hData.wA}`,
           stability: calcStability(B.games),
           stability_old: calcStability(B.games),
           // Новая стабильность удалена
-          s2: calcBaseS(B.games, 2).toFixed(3),
-          s5: calcBaseS(B.games, 5).toFixed(3),
+          // S2/S5: теперь выводим в шкале 0..100
+          s2: Math.round(calculateDisplayStrength(calcBaseS(B.games, 2))),
+          s5: Math.round(calculateDisplayStrength(calcBaseS(B.games, 5))),
           dryWins: calcDryGames(B.games).wins,
           dryLosses: calcDryGames(B.games).losses,
           h2hDryLoss: h2hData.dryWinsA,
@@ -1275,6 +1553,7 @@
           visualization: createMatchVisualization(B.games),
           // Новые метрики
           matchesToday: matchesTodayB,
+          lastGameDays: lastGameDaysB,
           comebackAbility: comebackAbilityB,
           scorePoints: scorePointsB,
           patterns: calculateRecentPatterns(B.games),
@@ -1291,12 +1570,15 @@
         setsDist: {},
         h2h: {
           total: h2hData.total,
-          visualization: probFinal > 0.5
-            ? createMatchVisualization(h2hData.h2hGames || [])
-            : createMatchVisualization((h2hData.h2hGames || []).map(g => ({ win: 1 - g.win }))),
+          // Визуализация H2H всегда с точки зрения игрока A
+          visualization: createMatchVisualization(h2hData.h2hGames || []),
           setWins: h2hData.h2hSetWins,
           h2hGames: h2hData.h2hGames || []
         },
+        // Общие соперники
+        commonOpponents: commonOpponentsTop,
+        commonOppSummary,
+        commonOpponentsCount: oppCount,
         formChartData: {},
         h2hChartData: {},
         // Red Flags данные
